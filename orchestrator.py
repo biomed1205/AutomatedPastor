@@ -91,6 +91,8 @@ class Orchestrator:
         self._state = 'idle'
         self.current_skill = None
         self._history = {}  # In-memory history: {skill_name: [results]}
+        self._agents = {}  # Registered agents: {name: agent}
+        self._async_tasks = {}  # Async task tracking
 
         # Initialize database table if connection provided
         if self.db_conn:
@@ -406,3 +408,99 @@ class Orchestrator:
 
         # Fall back to in-memory history
         return self._history.get(skill_name, [])
+
+    def register_agent(self, name, agent):
+        """Register an agent with the orchestrator.
+
+        Args:
+            name: Name to register the agent under.
+            agent: Agent instance with invoke() method.
+        """
+        self._agents[name] = agent
+
+    def has_agent(self, name):
+        """Check if an agent is registered.
+
+        Args:
+            name: Name of the agent.
+
+        Returns:
+            bool: True if agent is registered.
+        """
+        return name in self._agents
+
+    def invoke_agent(self, name, **kwargs):
+        """Invoke a registered agent.
+
+        Args:
+            name: Name of the agent.
+            **kwargs: Parameters to pass to the agent.
+
+        Returns:
+            dict: Result with 'status' and 'data'.
+
+        Raises:
+            ValueError: If agent is not registered.
+        """
+        if name not in self._agents:
+            raise ValueError(f"Agent not registered: {name}")
+
+        agent = self._agents[name]
+
+        if hasattr(agent, 'invoke'):
+            return agent.invoke(**kwargs)
+
+        # Fallback for agents with structure_sermon method
+        if hasattr(agent, 'structure_sermon'):
+            try:
+                result = agent.structure_sermon(
+                    kwargs.get('scripture'),
+                    kwargs.get('topic'),
+                    form=kwargs.get('form')
+                )
+                return {'status': 'success', 'data': result}
+            except Exception as e:
+                return {'status': 'error', 'data': None, 'error': str(e)}
+
+        return {'status': 'error', 'data': None, 'error': 'Agent has no invoke method'}
+
+    def invoke_agent_async(self, name, **kwargs):
+        """Invoke an agent asynchronously.
+
+        Args:
+            name: Name of the agent.
+            **kwargs: Parameters to pass to the agent.
+
+        Returns:
+            str: Task ID for tracking.
+        """
+        import uuid
+
+        if name not in self._agents:
+            raise ValueError(f"Agent not registered: {name}")
+
+        task_id = str(uuid.uuid4())
+        agent = self._agents[name]
+
+        def run_task():
+            return self.invoke_agent(name, **kwargs)
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(run_task)
+        self._async_tasks[task_id] = future
+
+        return task_id
+
+    def get_agent_result(self, task_id):
+        """Get result of async agent invocation.
+
+        Args:
+            task_id: Task ID from invoke_agent_async.
+
+        Returns:
+            dict: Result or None if not complete.
+        """
+        future = self._async_tasks.get(task_id)
+        if future and future.done():
+            return future.result()
+        return None
