@@ -703,6 +703,42 @@ If you complete an action and there's nothing else to do:
 - Do NOT create duplicate issues
 - Check issue list before creating new issues
 
+### IDLE LOOP COUNTER - Documentation Review Task
+
+Track consecutive idle loops (no PM review work AND no work to assign):
+
+**After 2 consecutive idle loops:** Perform a documentation review instead of just waiting.
+
+**Documentation Review Task:**
+1. Check key documentation files for accuracy:
+   - README.md - Does it reflect current features?
+   - CHANGELOG.md - Are recent changes documented?
+   - API.md - Are all endpoints documented?
+   - ARCHITECTURE.md - Does it match current structure?
+   - PROJECT_PLAN.md - Are completed items marked?
+
+2. Review what has been completed since last doc update:
+   \`\`\`bash
+   git log --oneline -20  # See recent commits
+   \`\`\`
+
+3. Update any outdated documentation:
+   - Add new features to README
+   - Add changelog entries for completed work
+   - Document new API endpoints
+   - Update architecture diagrams if needed
+
+4. Commit documentation updates:
+   \`\`\`bash
+   git add README.md CHANGELOG.md API.md ARCHITECTURE.md
+   git commit -m "docs: update documentation for recent features"
+   git push origin develop
+   \`\`\`
+
+5. Reset idle loop counter after documentation review
+
+**This keeps PM productive during worker busy periods while maintaining project documentation.**
+
 ## ERROR HANDLING
 
 If any git or gh command fails:
@@ -723,12 +759,58 @@ When all 10 phases are complete:
 
 ---
 
+## BUG FIX WORKFLOW
+
+Any agent can report a bug found during their work. The PM handles routing bug fixes to the appropriate agent.
+
+### Bug Discovery Scenarios
+
+**1. Code Writer discovers bug in Test Writer's tests:**
+- Code Writer creates issue with: agent:test-writer, type:bug-fix, status:waiting
+- Test Writer picks up and fixes the test
+- Test Writer creates PM review issue when fixed
+- PM approves and Code Writer can proceed with blocked implementation
+
+**2. Test Writer discovers bug in Code Writer's implementation:**
+- Test Writer creates issue with: agent:code-writer, type:bug-fix, status:waiting
+- Code Writer fixes the implementation
+- Code Writer creates PM review issue when fixed
+
+**3. PM discovers bug during review:**
+- PM creates rework issue for appropriate agent with status:rework
+
+### PM Handling Bug Fix Reviews
+
+When reviewing an issue with **type:bug-fix** label:
+
+1. **Merge the fix** from appropriate branch
+2. **Verify the fix** resolves the reported issue
+3. **Run tests** to confirm no regressions
+4. **Approve** if fix is correct:
+   ```bash
+   gh issue close NUMBER --comment 'APPROVED: Bug fix verified. [Original issue that was blocked] can now proceed.'
+   ```
+5. **Check for blocked issues** that can now continue
+6. **Close the original bug report** if still open
+
+### Bug Fix Labels
+
+| Label | Description |
+|-------|-------------|
+| type:bug-fix | Bug fix work (not new feature) |
+| status:blocked | Work blocked by a bug |
+
+---
+
 ## Quick Reference: Issue Label Combinations
 
 | Scenario | Labels |
 |----------|--------|
 | New test work | agent:test-writer, status:waiting, type:tests, phase:N |
 | New code work | agent:code-writer, status:waiting, type:implementation, phase:N |
-| Ready for review | agent:pm-review, status:waiting, type:tests OR type:implementation |
+| Bug fix for tests | agent:test-writer, status:waiting, type:bug-fix, phase:N |
+| Bug fix for code | agent:code-writer, status:waiting, type:bug-fix, phase:N |
+| Ready for review | agent:pm-review, status:waiting, type:tests OR type:implementation OR type:bug-fix |
 | Being worked | status:in-progress (replaces status:waiting) |
 | Needs rework | status:rework, status:waiting, agent:X |
+| Blocked by bug | status:blocked (add alongside other labels) |
