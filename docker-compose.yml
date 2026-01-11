@@ -1,0 +1,18 @@
+services:
+  automated-pastor:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./database:/app/database
+      - ./exports:/app/exports
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - APP_PASSWORD=${APP_PASSWORD}
+    restart: unless-stopped
+
+volumes:
+  database:
+  exports:
+  uploads:
