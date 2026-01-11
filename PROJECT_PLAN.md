@@ -1397,9 +1397,9 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Create SQLite database schema (all tables)
 - [x] Build basic UI (create, view, list sermons)
 - [x] Implement CLI bridge to Claude Code
-- [ ] Implement single-agent sermon generation
+- [x] Implement single-agent sermon generation
 - [x] Add simple password authentication
-- [ ] Add export to Word/PDF
+- [x] Add export to Word/PDF
 - [ ] Reference material input (text notes, file upload, URLs)
 - [ ] File processing for PDFs and Word docs
 - [ ] Verify Docker build and health endpoint work

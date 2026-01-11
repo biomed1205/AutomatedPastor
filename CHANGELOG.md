@@ -15,16 +15,20 @@ All notable changes to AutomatedPastor will be documented in this file.
   - Sermons list view
   - Create/Edit/View/Delete sermon functionality
   - API endpoints for JSON responses
-- **Test Suite**: 125+ passing tests
+- **Export**: Word (python-docx) and PDF (reportlab) export functionality
+- **Sermon Generation**: Single-agent sermon generation with Claude CLI integration
+- **Test Suite**: 179+ passing tests
   - App tests (12)
   - Database tests (49)
   - Authentication tests (33)
   - Route tests (31)
+  - Export tests (25)
+  - Sermon Generator tests (29)
 
 ### In Progress
-- Export to Word/PDF (python-docx, WeasyPrint)
-- Single-agent sermon generation
 - Reference material input (text, files, URLs)
+- File processing for PDFs and Word docs
+- Docker build verification
 
 ### Technical
 - Test Coverage: 96%+
