@@ -1398,7 +1398,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [ ] Build basic UI (create, view, list sermons)
 - [x] Implement CLI bridge to Claude Code
 - [ ] Implement single-agent sermon generation
-- [ ] Add simple password authentication
+- [x] Add simple password authentication
 - [ ] Add export to Word/PDF
 - [ ] Reference material input (text notes, file upload, URLs)
 - [ ] File processing for PDFs and Word docs
