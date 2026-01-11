@@ -1460,11 +1460,11 @@ Share sermon drafts with staff or spouse for input before finalizing.
 
 ### Phase 9: UI/UX Design
 - [ ] Use `/frontend-design` skill for entire app look/feel
-- [ ] Design system: colors, typography, spacing, components
-- [ ] Warm, inviting aesthetic appropriate for pastoral tool
+- [x] Design system: colors, typography, spacing, components
+- [x] Warm, inviting aesthetic appropriate for pastoral tool
 - [ ] Clean, uncluttered interface for focus during sermon prep
 - [ ] Mobile-responsive design
-- [ ] Accessibility considerations
+- [x] Accessibility considerations
 
 ### Phase 10: Polish
 - [ ] Practice timing feature
