@@ -37,11 +37,12 @@ BASE_TEMPLATE = '''<!DOCTYPE html>
 </html>'''
 
 
-def create_app(config=None):
+def create_app(config=None, testing=False):
     """Create and configure the Flask application.
 
     Args:
         config: Optional dictionary of configuration values to override defaults.
+        testing: If True, use testing configuration.
 
     Returns:
         Configured Flask application instance.
@@ -51,6 +52,22 @@ def create_app(config=None):
     reset_auth_state()
 
     app = Flask(__name__)
+
+    if testing:
+        app.config['TESTING'] = True
+        app.config['DATABASE'] = ':memory:'
+        # Initialize database tables for testing
+        with app.app_context():
+            from database import get_db, init_db
+            conn = get_db()
+            init_db(conn)
+            # Add test data
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO sermons (id, title, scripture, manuscript) VALUES (?, ?, ?, ?)",
+                (1, 'Test Sermon', 'John 3:16', 'Test manuscript content')
+            )
+            conn.commit()
 
     # Set secret key for sessions
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -675,6 +692,58 @@ h1 { color: #666; }
             'count': len(feedbacks),
             'status': 'completed'
         }), 200
+
+    # Feedback display routes
+    @app.route('/api/sermon/<sermon_id>/feedback')
+    def api_get_sermon_feedback(sermon_id):
+        """API endpoint for sermon feedback."""
+        from feedback_display import (get_feedback_for_sermon, InvalidSermonIdError,
+                                      SermonNotFoundError, DatabaseError)
+
+        try:
+            sid = int(sermon_id)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid sermon ID'}), 400
+
+        conn = get_db()
+        try:
+            # Check if sermon exists
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM sermons WHERE id = ?", (sid,))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Sermon not found'}), 404
+
+            feedback = get_feedback_for_sermon(conn, sid)
+            return jsonify({'feedback': feedback, 'count': len(feedback)}), 200
+
+        except (InvalidSermonIdError, SermonNotFoundError):
+            return jsonify({'error': 'Invalid sermon ID'}), 404
+        except DatabaseError as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/sermon/<int:sermon_id>/feedback')
+    def view_sermon_feedback(sermon_id):
+        """Display feedback page for a sermon."""
+        from feedback_display import prepare_template_context
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sermons WHERE id = ?", (sermon_id,))
+        if not cursor.fetchone():
+            return "Sermon not found", 404
+
+        context = prepare_template_context(conn, sermon_id)
+        return f"""<!DOCTYPE html>
+<html>
+<head><title>Feedback for {context.get('sermon_title', 'Sermon')}</title></head>
+<body>
+<h1>Feedback for {context.get('sermon_title', 'Sermon')}</h1>
+<p>Total reviewers: {context.get('reviewer_count', 0)}</p>
+<ul>
+{''.join(f"<li>{fb.get('reviewer')}: {fb.get('comment', '')}</li>" for fb in context.get('feedback_list', []))}
+</ul>
+</body>
+</html>"""
 
     return app
 
