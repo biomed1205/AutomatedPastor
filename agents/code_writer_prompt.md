@@ -684,3 +684,73 @@ reportlab>=4.0.0
 5. **Use TodoWrite** to track progress through each issue
 6. **Close issue with summary** before creating PM review issue
 7. **Include commit hash** in both issue close comment and PM review issue
+
+---
+
+## Handling Test Bugs (Issue #42)
+
+When you encounter a test that fails due to a bug IN THE TEST (not your implementation):
+
+### Identifying Test Bugs
+Common test bugs include:
+- Missing imports (e.g., `NameError: name 'X' is not defined`)
+- Wrong expected values
+- Test logic errors
+- Invalid test fixtures
+
+### What to Do
+
+**DO NOT** just ignore the failing test. Instead:
+
+1. **Verify it's a test bug, not an implementation bug**
+   - Read the error message carefully
+   - Check if your implementation is correct
+   - Compare with similar working tests
+
+2. **Create an issue for the test-writer**
+   ```bash
+   gh issue create --title 'Test Bug: [Brief description]' \
+     --label 'agent:test-writer' \
+     --label 'status:waiting' \
+     --label 'phase:N' \
+     --body '## Test Bug Report
+
+   ### Location
+   File: tests/unit/test_xxx.py
+   Test: TestClass.test_method (line N)
+
+   ### Issue
+   [Describe the bug]
+
+   ### Error Message
+   [paste error]
+
+   ### Fix Required
+   [Describe the fix]
+
+   ### Impact
+   - X of Y tests pass
+   - This test fails due to [reason]
+   - Implementation is correct'
+   ```
+
+3. **Create PM review issue noting the blocker**
+   - Include "BLOCKED BY TEST BUG" section
+   - Reference the test bug issue number
+   - Note that implementation is complete pending test fix
+
+4. **Continue with next work item**
+   - Don't wait for test fix
+   - Move on to other assigned issues
+
+### Example (Issue #42)
+Test `test_should_handle_password_protected_pdf` referenced `FileProcessingError` without importing it:
+```python
+# Bug: Missing FileProcessingError import
+from file_processing import extract_text_from_pdf, PasswordProtectedError
+
+# Error: NameError when pytest tries to evaluate the tuple
+with pytest.raises((PasswordProtectedError, FileProcessingError, Exception)):
+```
+
+Fix: Add `FileProcessingError` to the import statement.
