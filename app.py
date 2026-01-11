@@ -58,7 +58,6 @@ def create_app(config=None, testing=False):
         app.config['DATABASE'] = ':memory:'
         # Initialize database tables for testing
         with app.app_context():
-            from database import get_db, init_db
             conn = get_db()
             init_db(conn)
             # Add test data
@@ -744,6 +743,103 @@ h1 { color: #666; }
 </ul>
 </body>
 </html>"""
+
+    # Custom reviewer routes
+    @app.route('/custom-reviewers')
+    def list_custom_reviewers():
+        """List all custom reviewers page."""
+        from custom_reviewers import list_custom_reviewers as get_reviewers
+        conn = get_db()
+        try:
+            reviewers = get_reviewers(conn)
+            reviewers_list = [r.to_dict() for r in reviewers]
+        except Exception:
+            reviewers_list = []
+
+        return f"""<!DOCTYPE html>
+<html>
+<head><title>Custom Reviewers</title></head>
+<body>
+<h1>Custom Reviewers</h1>
+<a href="/custom-reviewers/new">Create New Reviewer</a>
+<ul>
+{''.join(f"<li>{r['name']}: {r['focus_area']}</li>" for r in reviewers_list)}
+</ul>
+</body>
+</html>"""
+
+    @app.route('/custom-reviewers/new')
+    def new_custom_reviewer():
+        """Create new custom reviewer page."""
+        return """<!DOCTYPE html>
+<html>
+<head><title>Create Custom Reviewer</title></head>
+<body>
+<h1>Create Custom Reviewer</h1>
+<form method="post" action="/api/custom-reviewers">
+<label>Name: <input name="name" required></label><br>
+<label>Focus Area: <input name="focus_area" required></label><br>
+<button type="submit">Create</button>
+</form>
+</body>
+</html>"""
+
+    @app.route('/api/custom-reviewers', methods=['POST'])
+    def api_create_custom_reviewer():
+        """API endpoint for creating custom reviewer."""
+        from custom_reviewers import create_custom_reviewer, ValidationError
+
+        conn = get_db()
+        data = request.get_json() or {}
+
+        name = data.get('name', '')
+        focus_area = data.get('focus_area', '')
+
+        if not name or not focus_area:
+            return jsonify({'error': 'Name and focus_area are required'}), 400
+
+        try:
+            reviewer = create_custom_reviewer(
+                conn, name=name, focus_area=focus_area,
+                identifier=data.get('identifier'),
+                prompt_template=data.get('prompt_template'),
+                created_by=data.get('created_by')
+            )
+            return jsonify({'id': reviewer.id, 'identifier': reviewer.identifier, **reviewer.to_dict()}), 201
+        except ValidationError as e:
+            return jsonify({'error': str(e)}), 400
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    @app.route('/api/custom-reviewers/<int:reviewer_id>', methods=['PUT'])
+    def api_update_custom_reviewer(reviewer_id):
+        """API endpoint for updating custom reviewer."""
+        from custom_reviewers import update_custom_reviewer, ReviewerNotFoundError
+
+        conn = get_db()
+        data = request.get_json() or {}
+
+        try:
+            reviewer = update_custom_reviewer(conn, reviewer_id, **data)
+            return jsonify(reviewer.to_dict()), 200
+        except ReviewerNotFoundError:
+            return jsonify({'error': 'Reviewer not found'}), 404
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    @app.route('/api/custom-reviewers/<int:reviewer_id>', methods=['DELETE'])
+    def api_delete_custom_reviewer(reviewer_id):
+        """API endpoint for deleting custom reviewer."""
+        from custom_reviewers import delete_custom_reviewer, ReviewerNotFoundError
+
+        conn = get_db()
+        try:
+            delete_custom_reviewer(conn, reviewer_id=reviewer_id)
+            return jsonify({'success': True}), 200
+        except ReviewerNotFoundError:
+            return jsonify({'error': 'Reviewer not found'}), 404
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
 
     return app
 

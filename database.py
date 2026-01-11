@@ -172,10 +172,14 @@ def init_db(conn):
         CREATE TABLE IF NOT EXISTS custom_reviewers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            identifier TEXT UNIQUE,
             focus_area TEXT,
             style_notes TEXT,
+            prompt_template TEXT,
             is_default BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
