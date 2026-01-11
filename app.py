@@ -352,6 +352,76 @@ form button { margin-top: 15px; padding: 10px 20px; }
 
         return '', 204
 
+    @app.route('/sermon/<int:sermon_id>/export/word')
+    def sermon_export_word(sermon_id):
+        """Export sermon to Word document."""
+        from export import export_to_word
+        from flask import Response
+
+        conn = get_db()
+        init_db(conn)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sermons WHERE id = ?", (sermon_id,))
+        sermon = cursor.fetchone()
+
+        if not sermon:
+            return jsonify({'error': 'Not found'}), 404
+
+        # Convert Row to dict
+        sermon_dict = {
+            'title': sermon['title'],
+            'scripture': sermon['scripture'],
+            'manuscript': sermon['manuscript'],
+            'outline': sermon['outline']
+        }
+
+        doc_bytes = export_to_word(sermon_dict)
+
+        # Create safe filename
+        safe_title = ''.join(c for c in sermon['title'] if c.isalnum() or c in ' -_').strip()
+        filename = f"{safe_title}.docx"
+
+        return Response(
+            doc_bytes,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+
+    @app.route('/sermon/<int:sermon_id>/export/pdf')
+    def sermon_export_pdf(sermon_id):
+        """Export sermon to PDF document."""
+        from export import export_to_pdf
+        from flask import Response
+
+        conn = get_db()
+        init_db(conn)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sermons WHERE id = ?", (sermon_id,))
+        sermon = cursor.fetchone()
+
+        if not sermon:
+            return jsonify({'error': 'Not found'}), 404
+
+        # Convert Row to dict
+        sermon_dict = {
+            'title': sermon['title'],
+            'scripture': sermon['scripture'],
+            'manuscript': sermon['manuscript'],
+            'outline': sermon['outline']
+        }
+
+        pdf_bytes = export_to_pdf(sermon_dict)
+
+        # Create safe filename
+        safe_title = ''.join(c for c in sermon['title'] if c.isalnum() or c in ' -_').strip()
+        filename = f"{safe_title}.pdf"
+
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+
     @app.route('/api/sermons')
     def api_sermons():
         """API endpoint to list all sermons as JSON."""
