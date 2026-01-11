@@ -1405,22 +1405,22 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Verify Docker build and health endpoint work
 
 ### Phase 2: Skills & Multi-Agent System
-- [ ] Create all 17 skill prompt files
-- [ ] Create agent prompt templates
-- [ ] Implement orchestrator with skill invocation
+- [x] Create all 17 skill prompt files
+- [x] Create agent prompt templates
+- [x] Implement orchestrator with skill invocation
 - [ ] Build parallel research agents
-- [ ] Integrate Homiletics agent for structure
+- [x] Integrate Homiletics agent for structure
 - [ ] Test end-to-end generation
 
 ### Phase 3: Review Panel
-- [ ] Create 7 reviewer persona prompts
-- [ ] Implement panel feedback system
-- [ ] Build revision agent
-- [ ] Add feedback display in UI
-- [ ] Custom reviewer support
+- [x] Create 7 reviewer persona prompts
+- [x] Implement panel feedback system
+- [x] Build revision agent
+- [x] Add feedback display in UI
+- [x] Custom reviewer support
 
 ### Phase 4: The Green Room (Panel Chat)
-- [ ] Build chat UI interface
+- [x] Build chat UI interface
 - [ ] Implement @ mention parsing
 - [ ] Create group shortcuts (@women, @UMC)
 - [ ] Persona-aware response generation

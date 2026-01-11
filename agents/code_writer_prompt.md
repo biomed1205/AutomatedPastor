@@ -789,3 +789,66 @@ with pytest.raises((PasswordProtectedError, FileProcessingError, Exception)):
 ```
 
 Fix: Add `FileProcessingError` to the import statement.
+
+---
+
+## Checking for Bug Fixes Before Proceeding
+
+**CRITICAL RULE:** Always check if submitted bug issues have been fixed before proceeding with work that depends on them.
+
+### When You've Submitted a Bug Issue
+
+After creating a test bug issue (or any bug issue):
+
+1. **Track the issue number** - Note which issue you created
+
+2. **Before starting new work, check bug status**
+   ```bash
+   gh issue view ISSUE_NUMBER --json state,comments
+   ```
+
+3. **If bug is still OPEN:**
+   - Do NOT proceed with work that depends on this bug being fixed
+   - Work on other unrelated issues instead
+   - Check back periodically
+
+4. **If bug is CLOSED:**
+   - Read the closing comment to understand the fix
+   - Merge the fix from the appropriate branch:
+     ```bash
+     git fetch origin tests-branch
+     git checkout origin/tests-branch -- path/to/fixed/file.py
+     ```
+   - Verify the fix works:
+     ```bash
+     pytest path/to/fixed_test.py -v
+     ```
+   - Commit the merged fix to your branch
+
+### Verification Workflow
+
+```bash
+# 1. Check if bug issue is closed
+gh issue view 42 --json state,title
+
+# 2. If closed, get the fix
+git fetch origin tests-branch
+git checkout origin/tests-branch -- tests/unit/test_file.py
+
+# 3. Verify fix works
+pytest tests/unit/test_file.py::TestClass::test_method -v
+
+# 4. Commit the merged fix
+git add tests/unit/test_file.py
+git commit -m "fix: merge test bug fix from tests-branch (Issue #42)"
+
+# 5. Run full test suite to confirm
+pytest -v
+```
+
+### Why This Matters
+
+- **Don't ignore failing tests** - They may indicate real problems
+- **Don't proceed with broken dependencies** - Leads to wasted effort
+- **Always verify fixes** - Trust but verify that bugs are actually fixed
+- **Keep test suite green** - All tests should pass before committing
