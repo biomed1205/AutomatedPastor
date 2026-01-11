@@ -1422,7 +1422,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ### Phase 4: The Green Room (Panel Chat)
 - [x] Build chat UI interface
 - [x] Implement @ mention parsing
-- [ ] Create group shortcuts (@women, @UMC)
+- [x] Create group shortcuts (@women, @UMC)
 - [ ] Persona-aware response generation
 - [ ] Chat history saving/export
 - [ ] Import insights to sermon draft
