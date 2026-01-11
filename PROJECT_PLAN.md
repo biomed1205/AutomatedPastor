@@ -1405,7 +1405,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Verify Docker build and health endpoint work
 
 ### Phase 2: Skills & Multi-Agent System
-- [ ] Create all 17 skill prompt files
+- [x] Create all 17 skill prompt files
 - [x] Create agent prompt templates
 - [ ] Implement orchestrator with skill invocation
 - [ ] Build parallel research agents
