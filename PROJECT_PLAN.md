@@ -1391,6 +1391,9 @@ Share sermon drafts with staff or spouse for input before finalizing.
 
 ### Phase 1: Foundation (Core Application)
 - [ ] Set up Flask project structure with WebSocket support
+- [ ] Create Dockerfile for containerization
+- [ ] Create docker-compose.yml for orchestration
+- [ ] Create .dockerignore file
 - [ ] Create SQLite database schema (all tables)
 - [ ] Build basic UI (create, view, list sermons)
 - [ ] Implement CLI bridge to Claude Code
@@ -1399,6 +1402,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [ ] Add export to Word/PDF
 - [ ] Reference material input (text notes, file upload, URLs)
 - [ ] File processing for PDFs and Word docs
+- [ ] Verify Docker build and health endpoint work
 
 ### Phase 2: Skills & Multi-Agent System
 - [ ] Create all 17 skill prompt files
