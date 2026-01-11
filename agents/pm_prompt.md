@@ -80,8 +80,49 @@ If NOT all complete, continue to Step 1.
 gh issue list --label 'agent:pm-review' --label 'status:waiting' --json number,title,body,labels --limit 1
 \`\`\`
 
-**If review work found:** Go to STEP 2
+**If review work found:** Go to STEP 1B (Pre-Review Queue Check)
 **If NO review work:** Go to STEP 5
+
+---
+
+### STEP 1B: Pre-Review Queue Check (BEFORE claiming review)
+
+**PURPOSE:** Keep workers busy while you review. Assign independent work BEFORE starting review.
+
+Check worker queues:
+\`\`\`bash
+# Check Test Writer queue (waiting + in-progress)
+gh issue list --label 'agent:test-writer' --state open --json number --jq 'length'
+
+# Check Code Writer queue (waiting + in-progress)
+gh issue list --label 'agent:code-writer' --state open --json number --jq 'length'
+\`\`\`
+
+**Determine if workers need work:**
+
+| Review Type | Test Writer Has Work | Code Writer Has Work | Action Before Review |
+|-------------|---------------------|----------------------|---------------------|
+| type:tests | No | - | Create independent Test Writer issue |
+| type:tests | Yes | - | Proceed to review |
+| type:implementation | - | No | ONLY if independent: create Code Writer issue |
+| type:implementation | - | Yes | Proceed to review |
+
+**CRITICAL DEPENDENCY RULES:**
+1. **If reviewing type:tests** → Do NOT create Code Writer issue that depends on these tests passing
+2. **If reviewing type:implementation** → CAN create Test Writer issue (always independent)
+3. Only create issues for INDEPENDENT features from PROJECT_PLAN.md
+4. Features that depend on the review outcome must wait until after approval
+
+**Example Independent Work (safe to assign before any review):**
+- New test files for unrelated features
+- Config files (.dockerignore, docker-compose)
+- Documentation files
+
+**Example DEPENDENT Work (must wait for review approval):**
+- Implementation issue for tests being reviewed → Wait until tests approved
+- Tests for feature that depends on implementation being reviewed → Wait
+
+After assigning any independent work, proceed to STEP 2.
 
 ---
 
