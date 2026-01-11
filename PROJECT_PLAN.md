@@ -1410,7 +1410,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Implement orchestrator with skill invocation
 - [x] Build parallel research agents
 - [x] Integrate Homiletics agent for structure
-- [ ] Test end-to-end generation
+- [x] Test end-to-end generation
 
 ### Phase 3: Review Panel
 - [x] Create 7 reviewer persona prompts
@@ -1423,17 +1423,17 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Build chat UI interface
 - [x] Implement @ mention parsing
 - [x] Create group shortcuts (@women, @UMC)
-- [ ] Persona-aware response generation
-- [ ] Chat history saving/export
-- [ ] Import insights to sermon draft
+- [x] Persona-aware response generation
+- [x] Chat history saving/export
+- [x] Import insights to sermon draft
 
 ### Phase 5: Sermon Series Planner
-- [ ] Database schema for series
-- [ ] Series creation wizard
-- [ ] Visual timeline view
-- [ ] Passage suggestion engine
-- [ ] Link sermons to series
-- [ ] Series arc tracking
+- [x] Database schema for series
+- [x] Series creation wizard
+- [x] Visual timeline view
+- [x] Passage suggestion engine
+- [x] Link sermons to series
+- [x] Series arc tracking
 
 ### Phase 6: Collaboration System
 - [ ] Generate shareable links
