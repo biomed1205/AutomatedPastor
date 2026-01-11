@@ -42,10 +42,10 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 - [x] Create `tests/e2e/__init__.py`
 
 ### 1.5 Python Environment
-- [ ] Create Python virtual environment (`python -m venv venv`) **BLOCKED: Python not installed**
-- [ ] Activate virtual environment
-- [ ] Install production dependencies (`pip install -r requirements.txt`)
-- [ ] Install dev dependencies (`pip install -r requirements-dev.txt`)
+- [x] Create Python virtual environment (`python -m venv venv`)
+- [x] Activate virtual environment
+- [x] Install production dependencies (`pip install -r requirements.txt`)
+- [x] Install dev dependencies (`pip install -r requirements-dev.txt`)
 
 ### 1.6 Initial Commit & GitHub
 - [x] Stage all files (`git add .`)
@@ -165,7 +165,7 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 
 | Step | Status | Date Completed |
 |------|--------|----------------|
-| Step 1: Initialize Repository | **PARTIAL** (Python venv blocked) | 2026-01-10 |
+| Step 1: Initialize Repository | **COMPLETE** | 2026-01-10 |
 | Step 2: Set Up Git Worktrees | Not Started | |
 | Step 3: Create GitHub Labels | Not Started | |
 | Step 4: Bootstrap First Issue | Not Started | |
@@ -184,4 +184,4 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 
 ## Blockers
 
-- **Python not installed:** Need to install Python 3.11+ to create virtual environment and install dependencies
+None currently.
