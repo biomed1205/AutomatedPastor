@@ -1454,7 +1454,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ### Phase 8: Enhanced Features
 - [x] Lectionary calendar integration
 - [x] Illustration deduplication
-- [ ] Theme/scripture usage tracking
+- [x] Theme/scripture usage tracking
 - [ ] Church context awareness
 - [ ] Previous sermon detection (warn if topic recently preached)
 
