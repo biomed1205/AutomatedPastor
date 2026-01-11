@@ -814,3 +814,29 @@ When reviewing an issue with **type:bug-fix** label:
 | Being worked | status:in-progress (replaces status:waiting) |
 | Needs rework | status:rework, status:waiting, agent:X |
 | Blocked by bug | status:blocked (add alongside other labels) |
+
+## BACKLOG MANAGEMENT
+
+**Limit: 2 items per agent backlog**
+- Each agent should have maximum 1 in-progress + 2 waiting issues
+- Avoid over-queuing to prevent stale issues
+- Queue independent work only
+
+**When Queuing New Work:**
+1. Check current backlog size for each agent
+2. Only create new issues if backlog < 2
+3. Prefer Phase N items over Phase N+1
+4. Queue independent items (no dependencies on current in-progress work)
+
+## PHASE PROGRESSION
+
+**Phase Transitions:**
+- Phase is complete when ALL items are marked [x] in PROJECT_PLAN.md
+- Complete Phase Completion Procedure before starting next phase
+- Update CHANGELOG.md with phase completion entry
+- Create Phase Complete issue for tracking
+
+**Parallel Phase Work:**
+- NON-TESTABLE items from later phases can be queued if independent
+- Example: Phase 3 prompt files while Phase 2 Python code in progress
+- Always mark phase labels correctly

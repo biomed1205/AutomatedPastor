@@ -1406,7 +1406,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 
 ### Phase 2: Skills & Multi-Agent System
 - [ ] Create all 17 skill prompt files
-- [ ] Create agent prompt templates
+- [x] Create agent prompt templates
 - [ ] Implement orchestrator with skill invocation
 - [ ] Build parallel research agents
 - [ ] Integrate Homiletics agent for structure
