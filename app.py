@@ -610,6 +610,72 @@ h1 { color: #666; }
         else:
             return jsonify({'error': 'Reference not found'}), 404
 
+    @app.route('/sermon/<int:sermon_id>/panel-feedback', methods=['GET'])
+    def get_panel_feedback(sermon_id):
+        """Get panel feedback for a sermon."""
+        from panel_feedback import FeedbackPanel, get_stored_feedback
+        from cli_bridge import CLIBridge
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, manuscript FROM sermons WHERE id = ?", (sermon_id,))
+        sermon = cursor.fetchone()
+        if sermon is None:
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        # Try to get stored feedback first
+        feedbacks = []
+        for reviewer_type in ['theological', 'pastoral', 'structural', 'engagement',
+                              'illustration', 'scripture', 'language']:
+            stored = get_stored_feedback(conn, sermon_id, reviewer_type)
+            if stored:
+                feedbacks.append(stored)
+
+        # If no stored feedback, generate it
+        if not feedbacks and sermon['manuscript']:
+            bridge = CLIBridge(command='echo')
+            panel = FeedbackPanel(bridge, db_conn=conn)
+            feedbacks = panel.get_all_feedback(sermon['manuscript'], sermon_id=sermon_id)
+
+        return jsonify({
+            'sermon_id': sermon_id,
+            'feedbacks': feedbacks,
+            'count': len(feedbacks)
+        }), 200
+
+    @app.route('/sermon/<int:sermon_id>/panel-feedback', methods=['POST'])
+    def trigger_panel_feedback(sermon_id):
+        """Trigger panel review for a sermon."""
+        from panel_feedback import FeedbackPanel
+        from cli_bridge import CLIBridge
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, manuscript FROM sermons WHERE id = ?", (sermon_id,))
+        sermon = cursor.fetchone()
+        if sermon is None:
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        # Generate feedback
+        bridge = CLIBridge(command='echo')
+        panel = FeedbackPanel(bridge, db_conn=conn)
+
+        manuscript = sermon['manuscript'] or 'No manuscript available'
+        feedbacks = panel.get_all_feedback(manuscript, sermon_id=sermon_id)
+
+        return jsonify({
+            'sermon_id': sermon_id,
+            'feedbacks': feedbacks,
+            'count': len(feedbacks),
+            'status': 'completed'
+        }), 200
+
     return app
 
 
