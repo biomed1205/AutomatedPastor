@@ -1395,7 +1395,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Create docker-compose.yml for orchestration
 - [x] Create .dockerignore file
 - [x] Create SQLite database schema (all tables)
-- [ ] Build basic UI (create, view, list sermons)
+- [x] Build basic UI (create, view, list sermons)
 - [x] Implement CLI bridge to Claude Code
 - [ ] Implement single-agent sermon generation
 - [x] Add simple password authentication
