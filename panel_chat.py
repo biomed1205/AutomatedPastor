@@ -643,3 +643,161 @@ def get_mentioned_reviewers(conn, message, default_reviewers):
         list: List of reviewer names to route the message to.
     """
     return parse_mentions_with_db(conn, message, default_reviewers)
+
+
+# =============================================================================
+# Group Mention Shortcuts (@women, @UMC, etc.)
+# =============================================================================
+
+import json
+
+
+def expand_group_mention(group_name, definitions):
+    """Expand a group name to list of member names.
+
+    Args:
+        group_name: Name of the group to expand (e.g., 'women', 'umc').
+        definitions: Dictionary mapping group names to member lists.
+
+    Returns:
+        list: List of member names, or empty list if group not found.
+    """
+    if not group_name:
+        return []
+
+    # Case-insensitive lookup
+    group_lower = group_name.lower()
+
+    # Create lowercase key mapping
+    defs_lower = {k.lower(): v for k, v in definitions.items()}
+
+    if group_lower in defs_lower:
+        return list(defs_lower[group_lower])
+
+    return []
+
+
+def expand_groups_in_message(message, definitions):
+    """Find and expand all group mentions in a message.
+
+    Args:
+        message: The message text to parse.
+        definitions: Dictionary mapping group names to member lists.
+
+    Returns:
+        list: List of unique member names from all mentioned groups.
+    """
+    if not message or not message.strip():
+        return []
+
+    # Extract all @patterns from the message
+    patterns = extract_mention_patterns(message)
+
+    # Collect all unique members from matching groups
+    all_members = set()
+
+    for pattern in patterns:
+        members = expand_group_mention(pattern, definitions)
+        all_members.update(members)
+
+    return list(all_members)
+
+
+def parse_all_mentions(message, definitions, default_reviewers):
+    """Parse all mentions including both groups and individual reviewers.
+
+    Args:
+        message: The message text to parse.
+        definitions: Dictionary mapping group names to member lists.
+        default_reviewers: List of default individual reviewer names.
+
+    Returns:
+        list: List of unique reviewer names from groups and individual mentions.
+    """
+    if not message or not message.strip():
+        return []
+
+    # First expand all groups
+    group_members = expand_groups_in_message(message, definitions)
+
+    # Then get individual mentions
+    individual_mentions = parse_mentions(message, default_reviewers)
+
+    # Collect all group member names as valid reviewers for individual matching
+    all_group_members = set()
+    for members in definitions.values():
+        all_group_members.update(members)
+
+    # Also check for individual mentions of group members
+    member_mentions = parse_mentions(message, list(all_group_members))
+
+    # Combine all and remove duplicates
+    all_reviewers = set(group_members)
+    all_reviewers.update(individual_mentions)
+    all_reviewers.update(member_mentions)
+
+    return list(all_reviewers)
+
+
+def expand_group_with_db(conn, group_name, definitions):
+    """Expand a group name with database lookup.
+
+    Database groups take precedence over default definitions.
+    Inactive groups are ignored.
+
+    Args:
+        conn: Database connection with group_shortcuts table.
+        group_name: Name of the group to expand.
+        definitions: Default group definitions dictionary.
+
+    Returns:
+        list: List of member names from the group.
+    """
+    if not group_name:
+        return []
+
+    group_lower = group_name.lower()
+
+    # Try database first
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT members FROM group_shortcuts WHERE LOWER(group_name) = ? AND active = 1",
+            (group_lower,)
+        )
+        row = cursor.fetchone()
+
+        if row:
+            members_json = row[0] if isinstance(row, tuple) else row['members']
+            return json.loads(members_json)
+    except Exception:
+        # Table may not exist or other error
+        pass
+
+    # Fall back to default definitions
+    return expand_group_mention(group_name, definitions)
+
+
+def get_available_groups(definitions):
+    """Get list of all available group names.
+
+    Args:
+        definitions: Dictionary mapping group names to member lists.
+
+    Returns:
+        list: List of group names.
+    """
+    return list(definitions.keys())
+
+
+def get_group_members(group_name, definitions):
+    """Get list of members for a specific group.
+
+    Args:
+        group_name: Name of the group.
+        definitions: Dictionary mapping group names to member lists.
+
+    Returns:
+        list: List of member names, or empty list if group not found.
+    """
+    return expand_group_mention(group_name, definitions)
