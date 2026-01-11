@@ -5,6 +5,22 @@ import sqlite3
 import os
 
 
+@pytest.fixture(autouse=True)
+def reset_auth_between_tests():
+    """Reset auth state before and after each test."""
+    try:
+        from auth import reset_auth_state
+        reset_auth_state()
+    except ImportError:
+        pass  # auth module may not exist yet
+    yield
+    try:
+        from auth import reset_auth_state
+        reset_auth_state()
+    except ImportError:
+        pass
+
+
 @pytest.fixture
 def db_connection():
     """Real in-memory SQLite database for testing."""
