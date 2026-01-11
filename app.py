@@ -542,6 +542,74 @@ h1 { color: #666; }
             return not_found_html(error)
         return jsonify({'error': 'Not found'}), 404
 
+    @app.route('/sermon/<int:sermon_id>/references', methods=['GET'])
+    def list_sermon_references(sermon_id):
+        """List all references for a sermon."""
+        from reference_materials import list_references
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sermons WHERE id = ?", (sermon_id,))
+        if cursor.fetchone() is None:
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        references = list_references(conn, sermon_id=sermon_id)
+        return jsonify(references), 200
+
+    @app.route('/sermon/<int:sermon_id>/references', methods=['POST'])
+    def create_sermon_reference(sermon_id):
+        """Create a new reference for a sermon."""
+        from reference_materials import (
+            create_text_reference, create_url_reference,
+            InvalidReferenceError, SermonNotFoundError
+        )
+
+        conn = get_db()
+        init_db(conn)
+
+        data = request.get_json() or {}
+        ref_type = data.get('type', '')
+        content = data.get('content', '')
+        url = data.get('url', '')
+
+        try:
+            if ref_type == 'text':
+                ref_id = create_text_reference(conn, sermon_id=sermon_id, content=content)
+            elif ref_type == 'url':
+                ref_id = create_url_reference(conn, sermon_id=sermon_id, url=url)
+            else:
+                return jsonify({'error': 'Invalid reference type'}), 400
+
+            return jsonify({'id': ref_id}), 201
+
+        except SermonNotFoundError:
+            return jsonify({'error': 'Sermon not found'}), 404
+        except InvalidReferenceError as e:
+            return jsonify({'error': str(e)}), 400
+
+    @app.route('/sermon/<int:sermon_id>/references/<int:ref_id>', methods=['DELETE'])
+    def delete_sermon_reference(sermon_id, ref_id):
+        """Delete a reference from a sermon."""
+        from reference_materials import delete_reference
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sermons WHERE id = ?", (sermon_id,))
+        if cursor.fetchone() is None:
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        deleted = delete_reference(conn, reference_id=ref_id)
+        if deleted:
+            return '', 204
+        else:
+            return jsonify({'error': 'Reference not found'}), 404
+
     return app
 
 

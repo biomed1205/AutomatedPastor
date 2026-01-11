@@ -568,3 +568,119 @@ def run_claude(prompt, timeout=300):
     )
     return result.stdout
 ```
+
+---
+
+## Lessons Learned
+
+### In-Memory Database Testing (Issue #24)
+When using SQLite `:memory:` for testing, each call to `sqlite3.connect(':memory:')` creates a NEW database. To share data between test setup and Flask route handlers:
+
+```python
+# database.py - Cache in-memory connections by app ID
+_memory_db_cache = {}
+
+def get_db(db_path=None):
+    if db_path is None:
+        from flask import g, current_app
+        if 'db' not in g:
+            db_path = current_app.config.get('DATABASE', ':memory:')
+            if db_path == ':memory:':
+                app_id = id(current_app._get_current_object())
+                if app_id not in _memory_db_cache:
+                    conn = sqlite3.connect(':memory:', check_same_thread=False)
+                    conn.row_factory = sqlite3.Row
+                    _memory_db_cache[app_id] = conn
+                g.db = _memory_db_cache[app_id]
+            else:
+                g.db = sqlite3.connect(db_path)
+                g.db.row_factory = sqlite3.Row
+        return g.db
+    # ... rest of function
+```
+
+### Auth State Reset for Test Isolation (Issue #22)
+Use an autouse fixture to reset auth state between tests:
+
+```python
+# conftest.py
+@pytest.fixture(autouse=True)
+def reset_auth_between_tests():
+    try:
+        from auth import reset_auth_state
+        reset_auth_state()
+    except ImportError:
+        pass
+    yield
+    try:
+        from auth import reset_auth_state
+        reset_auth_state()
+    except ImportError:
+        pass
+```
+
+Also call reset in `create_app()`:
+```python
+def create_app(config=None):
+    from auth import reset_auth_state
+    reset_auth_state()
+    # ... rest of function
+```
+
+### PDF Generation with Visible Title (Issue #28)
+WeasyPrint compresses all content. Use reportlab for PDFs where title must be visible in bytes:
+
+```python
+from reportlab.platypus import SimpleDocTemplate
+
+doc = SimpleDocTemplate(buffer, pagesize=letter,
+                        title=title,  # Sets /Title in PDF metadata
+                        author='AutomatedPastor')
+```
+
+### Content Negotiation for 404 (Issue #24)
+Return JSON by default (for API compatibility), HTML only when explicitly requested:
+
+```python
+@app.errorhandler(404)
+def not_found(error):
+    accept = request.headers.get('Accept', '')
+    if 'text/html' in accept and 'application/json' not in accept:
+        return not_found_html(error)
+    return jsonify({'error': 'Not found'}), 404
+```
+
+### Regex with Leading Whitespace (Issue #33)
+Test strings often have leading whitespace. Account for it in regex:
+
+```python
+# Handle leading whitespace
+title_match = re.search(r'^\s*#\s+(.+?)$', output, re.MULTILINE)
+```
+
+### Security Scan for Host Binding (Issue #3)
+Don't bind to `0.0.0.0` by default. Use environment variable:
+
+```python
+if __name__ == '__main__':
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')  # Default to localhost
+    app.run(host=host, port=8787)
+```
+
+### Adding reportlab Dependency
+If tests require PDF with visible text in bytes, add to requirements.txt:
+```
+reportlab>=4.0.0
+```
+
+---
+
+## Workflow Tips
+
+1. **Always stash before merge** if there are uncommitted changes
+2. **Run tests immediately after merge** to see what's failing
+3. **Read test imports first** to know what modules/functions to create
+4. **Match exact return values** that tests assert
+5. **Use TodoWrite** to track progress through each issue
+6. **Close issue with summary** before creating PM review issue
+7. **Include commit hash** in both issue close comment and PM review issue
