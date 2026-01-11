@@ -1409,7 +1409,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Create agent prompt templates
 - [x] Implement orchestrator with skill invocation
 - [ ] Build parallel research agents
-- [ ] Integrate Homiletics agent for structure
+- [x] Integrate Homiletics agent for structure
 - [ ] Test end-to-end generation
 
 ### Phase 3: Review Panel
