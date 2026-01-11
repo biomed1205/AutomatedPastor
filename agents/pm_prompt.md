@@ -293,11 +293,144 @@ git push origin develop
 \`\`\`
 
 **Check if phase is now complete:**
-- If ALL items in current phase are [x]:
-  - Commit phase completion: \`git commit -m 'docs: Phase N complete'\`
-  - Move to next phase
 
-**Create next Test Writer issue** (for next unchecked item in PROJECT_PLAN.md):
+If ALL items in current phase are marked [x], execute the **PHASE COMPLETION PROCEDURE** below before creating the next issue.
+
+---
+
+### PHASE COMPLETION PROCEDURE
+
+When a phase is complete, update ALL documentation before moving to next phase:
+
+**Step A: Verify Phase Completion**
+\`\`\`bash
+# Run full test suite
+pytest --cov=. --cov-fail-under=80 -v
+
+# Security scan
+bandit -r . -x ./tests,./venv
+
+# If Docker files exist, verify build
+docker build -t automated-pastor-test . 2>/dev/null && docker rmi automated-pastor-test || echo 'No Dockerfile yet'
+\`\`\`
+
+**Step B: Update README.md**
+Add/update these sections:
+- Features implemented in this phase
+- Any new setup instructions
+- Updated usage examples
+- Current project status
+
+\`\`\`bash
+# Edit README.md to reflect current state
+# Include: what works, how to run it, what's next
+\`\`\`
+
+**Step C: Update CHANGELOG.md**
+Add entry for this phase:
+\`\`\`markdown
+## [Phase N] - YYYY-MM-DD
+
+### Added
+- [Feature 1]: [Brief description]
+- [Feature 2]: [Brief description]
+
+### Changed
+- [Any changes to existing functionality]
+
+### Technical
+- Test coverage: X%
+- Security scan: Clean
+\`\`\`
+
+**Step D: Update/Create API.md (if endpoints were added)**
+Document any new endpoints:
+\`\`\`markdown
+## Endpoints
+
+### GET /health
+Returns application health status.
+
+**Response:**
+\`\`\`json
+{"status": "healthy"}
+\`\`\`
+
+### [NEW ENDPOINTS FROM THIS PHASE]
+...
+\`\`\`
+
+**Step E: Update ARCHITECTURE.md (if structure changed)**
+Document any architectural changes:
+- New modules added
+- Database schema changes
+- New dependencies
+- System diagrams if needed
+
+**Step F: Update CLAUDE.md (if learnings/patterns discovered)**
+Add any new patterns or instructions learned during this phase:
+- New testing patterns
+- Code conventions established
+- Common pitfalls to avoid
+
+**Step G: Update IMPLEMENTATION_CHECKLIST.md**
+Update the Progress Tracking table with completion date for this phase.
+
+**Step H: Commit All Documentation**
+\`\`\`bash
+git add README.md CHANGELOG.md API.md ARCHITECTURE.md CLAUDE.md IMPLEMENTATION_CHECKLIST.md PROJECT_PLAN.md
+git status
+
+git commit -m 'docs: Phase N complete - update all documentation
+
+- README: Updated features and status
+- CHANGELOG: Added Phase N entries
+- API: Documented new endpoints
+- ARCHITECTURE: Updated system design
+- IMPLEMENTATION_CHECKLIST: Marked phase complete
+
+Phase N Features:
+- [List key features completed]
+
+Test Coverage: X%
+Security: Clean'
+
+git push origin develop
+\`\`\`
+
+**Step I: Create Phase Completion Issue (for tracking)**
+\`\`\`bash
+gh issue create --title 'Phase N Complete' \
+  --label 'phase:N' \
+  --body '## Phase N Summary
+
+### Features Completed
+- [x] [Feature 1]
+- [x] [Feature 2]
+- [x] [Feature 3]
+
+### Documentation Updated
+- [x] README.md
+- [x] CHANGELOG.md
+- [x] API.md
+- [x] ARCHITECTURE.md
+- [x] IMPLEMENTATION_CHECKLIST.md
+
+### Metrics
+- Test Coverage: X%
+- Security Scan: Clean
+- All tests: Passing
+
+### Next Phase
+Phase N+1: [Phase Name]
+First task: [First item in next phase]'
+
+gh issue close [ISSUE_NUMBER] --comment 'Phase N officially complete. Moving to Phase N+1.'
+\`\`\`
+
+---
+
+**Create next Test Writer issue** (for first unchecked item in next phase):
 
 \`\`\`bash
 gh issue create --title 'Write tests for [NEXT FEATURE from PROJECT_PLAN.md]' \
