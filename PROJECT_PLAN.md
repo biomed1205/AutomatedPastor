@@ -1402,7 +1402,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Add export to Word/PDF
 - [x] Reference material input (text notes, file upload, URLs)
 - [x] File processing for PDFs and Word docs
-- [ ] Verify Docker build and health endpoint work
+- [x] Verify Docker build and health endpoint work
 
 ### Phase 2: Skills & Multi-Agent System
 - [ ] Create all 17 skill prompt files
