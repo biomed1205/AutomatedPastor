@@ -59,19 +59,19 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 ## Step 2: Set Up Git Worktrees
 
 ### 2.1 Create Worktrees
-- [ ] Navigate to parent directory (`cd ..`)
-- [ ] Create worktree for Test Writer (`git -C AutomatedPastor worktree add ./pastor-tests -b tests-branch`)
-- [ ] Create worktree for Code Writer (`git -C AutomatedPastor worktree add ./pastor-code -b code-branch`)
+- [x] Navigate to parent directory (`cd ..`)
+- [x] Create worktree for Test Writer (`git worktree add ../pastor-tests tests-branch`)
+- [x] Create worktree for Code Writer (`git worktree add ../pastor-code code-branch`)
 
 ### 2.2 Push New Branches
-- [ ] Navigate back to AutomatedPastor (`cd AutomatedPastor`)
-- [ ] Push tests-branch (`git push -u origin tests-branch`)
-- [ ] Push code-branch (`git push -u origin code-branch`)
+- [x] Navigate back to AutomatedPastor (`cd AutomatedPastor`)
+- [x] Push tests-branch (`git push -u origin tests-branch`)
+- [x] Push code-branch (`git push -u origin code-branch`)
 
 ### 2.3 Verify Structure
-- [ ] Confirm `D:/Projects/AutomatedPastor/` exists (PM works here, on develop)
-- [ ] Confirm `D:/Projects/pastor-tests/` exists (Test Writer, on tests-branch)
-- [ ] Confirm `D:/Projects/pastor-code/` exists (Code Writer, on code-branch)
+- [x] Confirm `D:/Projects/AutomatedPastor/` exists (PM works here, on develop)
+- [x] Confirm `D:/Projects/pastor-tests/` exists (Test Writer, on tests-branch)
+- [x] Confirm `D:/Projects/pastor-code/` exists (Code Writer, on code-branch)
 
 ---
 
@@ -166,7 +166,7 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 | Step | Status | Date Completed |
 |------|--------|----------------|
 | Step 1: Initialize Repository | **COMPLETE** | 2026-01-10 |
-| Step 2: Set Up Git Worktrees | Not Started | |
+| Step 2: Set Up Git Worktrees | **COMPLETE** | 2026-01-10 |
 | Step 3: Create GitHub Labels | Not Started | |
 | Step 4: Bootstrap First Issue | Not Started | |
 | Step 5: Create Agent Prompts | Not Started | |
