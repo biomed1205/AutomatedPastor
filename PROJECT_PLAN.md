@@ -1392,7 +1392,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ### Phase 1: Foundation (Core Application)
 - [x] Set up Flask project structure with WebSocket support
 - [x] Create Dockerfile for containerization
-- [ ] Create docker-compose.yml for orchestration
+- [x] Create docker-compose.yml for orchestration
 - [ ] Create .dockerignore file
 - [ ] Create SQLite database schema (all tables)
 - [ ] Build basic UI (create, view, list sermons)
