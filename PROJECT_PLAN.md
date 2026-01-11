@@ -1436,11 +1436,11 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Series arc tracking
 
 ### Phase 6: Collaboration System
-- [ ] Generate shareable links
-- [ ] Reviewer comment system
-- [ ] Inline suggestion mode
-- [ ] Version history tracking
-- [ ] Review status dashboard
+- [x] Generate shareable links
+- [x] Reviewer comment system
+- [x] Inline suggestion mode
+- [x] Version history tracking
+- [x] Review status dashboard
 
 ### Phase 7: Sermon Archive
 - [ ] Archive list view with year/month organization
