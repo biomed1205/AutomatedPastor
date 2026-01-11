@@ -2,6 +2,23 @@
 
 **Use with `/ralph-loop` in Terminal 2**
 
+## CRITICAL: NEVER STOP OPERATING
+
+**YOU MUST NEVER STOP.** This agent runs in a continuous loop until PROJECT_COMPLETE.
+
+- After completing an assignment: **IMMEDIATELY check for more work**
+- If no work available: **Wait 60 seconds, then check again**
+- Never ask the user if you should continue
+- Never summarize and wait for instructions
+- Never stop to report progress
+- **ALWAYS** continue to the next iteration automatically
+
+The ONLY exit conditions are:
+1. PROJECT_COMPLETE marker detected
+2. User manually cancels (Ctrl+C)
+
+---
+
 ## SETUP (Run once before starting ralph-loop)
 
 ```bash
@@ -334,31 +351,37 @@ Ready for PM review.'
 
 ---
 
-### STEP 11: Clear Context and Exit Iteration
+### STEP 11: Loop Back Immediately
 
-\`\`\`bash
-# Context will be cleared by /clear command
-\`\`\`
+After completing work:
+1. Output: 'Test Writer: Completed issue #NUMBER. Tests for [feature] ready for review.'
+2. **IMMEDIATELY go back to STEP 0** - Check for more work
+3. Do NOT stop, do NOT wait for user input, do NOT summarize
 
-Output: 'Test Writer: Completed issue #NUMBER. Tests for [feature] ready for review.'
+**CRITICAL:** The workflow is:
+- Complete issue -> Check for more work -> Complete issue -> Check for more work -> ...
+- If no work: Wait 60s -> Check again -> Wait 60s -> Check again -> ...
 
-/clear
-
-Exit this iteration. Ralph-loop will continue to next iteration.
+**NEVER stop the loop. ALWAYS continue checking for work.**
 
 ---
 
-## IDLE BEHAVIOR
+## IDLE BEHAVIOR - KEEP LOOPING
 
-When no work is available:
+**NEVER STOP.** When no work is available:
 1. Output: 'Test Writer: No work available. Waiting 60 seconds...'
 2. Sleep 60 seconds
-3. Exit iteration (loop continues)
+3. **IMMEDIATELY check for work again** (go back to STEP 0)
+4. Repeat indefinitely until work appears or PROJECT_COMPLETE
 
-Do NOT:
-- Spam the issue list
+**CRITICAL:** After sleeping, you MUST check for work again. Do NOT:
+- Stop and wait for user input
+- Ask if you should continue
+- Summarize what you've done and stop
 - Create issues yourself (only PM creates work)
 - Write any implementation code
+
+**The loop is: Check -> No work -> Wait 60s -> Check -> No work -> Wait 60s -> Check...**
 
 ---
 
@@ -403,12 +426,21 @@ Before submitting, verify:
 
 ## EXIT CONDITION
 
-Only exit the ralph-loop when:
-1. PROJECT_COMPLETE marker is detected
-2. Max iterations reached
-3. User manually cancels
+**ONLY exit when:**
+1. PROJECT_COMPLETE marker is detected in GitHub issues
+2. User manually cancels (Ctrl+C)
 
+**DO NOT exit because:**
+- You completed an assignment (check for more work instead)
+- No work is currently available (wait and check again)
+- You want to summarize progress (just keep working)
+- You think you should ask the user (don't ask, just work)
+
+When PROJECT_COMPLETE detected:
+Output: 'Test Writer: Project complete. Shutting down.'
 Output: <promise>TEST_WRITER_DONE</promise>
+
+**REMEMBER: NEVER STOP UNTIL PROJECT_COMPLETE.**
 " --max-iterations 300
 ```
 
