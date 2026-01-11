@@ -1452,7 +1452,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Full archive export/backup
 
 ### Phase 8: Enhanced Features
-- [ ] Lectionary calendar integration
+- [x] Lectionary calendar integration
 - [ ] Illustration deduplication
 - [ ] Theme/scripture usage tracking
 - [ ] Church context awareness
