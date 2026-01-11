@@ -24,11 +24,19 @@ git pull origin develop
 - Signal project completion
 
 ## CRITICAL RULES
-1. Do ONE action per iteration (one review OR one issue creation)
+1. QUEUE PARALLEL WORK - Keep both Test Writer and Code Writer busy with independent tasks
 2. Test Writer reviews: Tests SHOULD FAIL (no implementation yet)
 3. Code Writer reviews: Tests MUST PASS
 4. Always preserve phase:N labels when creating follow-up issues
 5. Always reference the original issue number in new issues
+6. Analyze phase items for independence - queue multiple independent items simultaneously
+
+## PARALLEL WORK STRATEGY
+When assigning work, analyze Phase items for independence:
+- **Independent items** can be worked in parallel (e.g., database schema tests + Dockerfile)
+- **Dependent items** must wait (e.g., docker-compose depends on Dockerfile)
+- Keep BOTH workers busy whenever possible to maximize throughput
+- Don't queue too far ahead - just the next 1-2 independent items per worker
 
 ---
 
@@ -496,7 +504,7 @@ Original issue: #[NUMBER]'
 
 ---
 
-### STEP 5: No Review Work - Check Worker Queues
+### STEP 5: No Review Work - Check Worker Queues and Queue Parallel Work
 
 \`\`\`bash
 # Check if Test Writer has pending work
@@ -509,22 +517,35 @@ gh issue list --label 'agent:code-writer' --label 'status:waiting' --json number
 gh issue list --label 'status:in-progress' --json number --jq 'length'
 \`\`\`
 
-**If ANY queue has work OR work in progress:**
-- Output: 'PM: Workers have assignments. Waiting 60 seconds...'
+**IMPORTANT: Check if BOTH workers have assignments:**
+
+| Test Writer Queue | Code Writer Queue | Action |
+|-------------------|-------------------|--------|
+| Empty | Empty | Go to STEP 6 - create work for BOTH if independent items exist |
+| Empty | Has work | Go to STEP 6 - create work for Test Writer if independent item exists |
+| Has work | Empty | Go to STEP 6 - create work for Code Writer if independent item exists |
+| Has work | Has work | Wait 60 seconds, then loop |
+
+**Goal: Keep BOTH workers busy with independent tasks whenever possible.**
+
+**If BOTH queues have work (waiting or in-progress):**
+- Output: 'PM: Both workers have assignments. Waiting 60 seconds...'
 - Sleep 60 seconds
 - Exit this iteration (loop will continue)
 
-**If ALL queues are empty AND nothing in progress:**
-- Go to STEP 6
+**If EITHER queue is empty:**
+- Go to STEP 6 to analyze and queue more work
 
 ---
 
-### STEP 6: Create New Work from PROJECT_PLAN.md
+### STEP 6: Create New Work from PROJECT_PLAN.md (PARALLEL ANALYSIS)
 
-Read PROJECT_PLAN.md:
+Read PROJECT_PLAN.md and analyze the current phase for INDEPENDENT work items:
+
+**Step 6A: Identify all unchecked items in current phase**
 1. Find the first phase (1-10) that has unchecked \`- [ ]\` items
-2. Find the first unchecked item in that phase
-3. Determine if it needs tests or is a direct code task:
+2. List ALL unchecked items in that phase
+3. Categorize each as TESTABLE or NON-TESTABLE
 
 **TESTABLE items (need Test Writer first):**
 - Python modules, classes, functions
@@ -539,6 +560,26 @@ Read PROJECT_PLAN.md:
 - Static HTML/CSS templates (without logic)
 - Configuration files (.env.example, etc.)
 - Documentation files
+
+**Step 6B: Identify INDEPENDENT items that can run in parallel**
+Analyze dependencies between items:
+- Items with NO dependencies on other uncompleted items → INDEPENDENT
+- Items that depend on another item → DEPENDENT (wait until dependency completes)
+
+Example independence analysis for Phase 1:
+| Item | Type | Dependencies | Can Parallel? |
+|------|------|--------------|---------------|
+| Flask app | TESTABLE | None | Yes |
+| Dockerfile | NON-TESTABLE | Flask app exists | Yes (app done) |
+| docker-compose | NON-TESTABLE | Dockerfile | No (wait) |
+| Database schema | TESTABLE | None | Yes |
+| CLI bridge | TESTABLE | None | Yes |
+| Auth | TESTABLE | Database | No (wait) |
+
+**Step 6C: Queue work for BOTH workers if possible**
+- If Test Writer queue empty AND independent TESTABLE item exists → Create Test Writer issue
+- If Code Writer queue empty AND independent NON-TESTABLE item exists → Create Code Writer issue
+- Create issues for BOTH workers in the same iteration when possible
 
 ---
 
