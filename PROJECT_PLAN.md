@@ -1390,8 +1390,8 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ## Implementation Phases
 
 ### Phase 1: Foundation (Core Application)
-- [ ] Set up Flask project structure with WebSocket support
-- [ ] Create Dockerfile for containerization
+- [x] Set up Flask project structure with WebSocket support
+- [x] Create Dockerfile for containerization
 - [ ] Create docker-compose.yml for orchestration
 - [ ] Create .dockerignore file
 - [ ] Create SQLite database schema (all tables)
