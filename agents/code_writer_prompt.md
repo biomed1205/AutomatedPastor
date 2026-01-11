@@ -519,6 +519,41 @@ Output: <promise>CODE_WRITER_DONE</promise>
 | Routes | routes/ directory or app.py |
 | Skills | skills/sermon/*.py, skills/dev/*.py |
 | Agents | agents/*.py |
+| Frontend | templates/, static/ |
+
+---
+
+## Frontend Development
+
+When implementing any front-end code (HTML, CSS, JavaScript, Alpine.js), you MUST use the `frontend-design` skill.
+
+### When to Use Frontend-Design Skill
+- Creating or modifying HTML templates
+- Writing CSS styles
+- Implementing JavaScript functionality
+- Working with Alpine.js components
+- Creating responsive layouts
+- Building form interfaces
+- Implementing UI components
+
+### How to Use
+Before writing any frontend code, invoke the skill:
+```bash
+/frontend-design
+```
+
+This ensures:
+- Consistent design patterns
+- Proper Alpine.js integration
+- Accessibility compliance
+- Mobile-responsive layouts
+- Project-specific styling guidelines
+
+### Frontend Technology Stack
+- **HTML5**: Semantic markup, Jinja2 templates
+- **CSS**: Custom styles, responsive design
+- **JavaScript**: Alpine.js for reactivity
+- **Icons**: (specify icon library if any)
 
 ---
 
