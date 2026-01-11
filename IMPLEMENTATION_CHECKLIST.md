@@ -59,90 +59,71 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 ## Step 2: Set Up Git Worktrees
 
 ### 2.1 Create Worktrees
-- [x] Navigate to parent directory (`cd ..`)
-- [x] Create worktree for Test Writer (`git worktree add ../pastor-tests tests-branch`)
-- [x] Create worktree for Code Writer (`git worktree add ../pastor-code code-branch`)
+- [ ] Navigate to parent directory (`cd ..`)
+- [ ] Create worktree for Test Writer (`git -C AutomatedPastor worktree add ./pastor-tests -b tests-branch`)
+- [ ] Create worktree for Code Writer (`git -C AutomatedPastor worktree add ./pastor-code -b code-branch`)
 
 ### 2.2 Push New Branches
-- [x] Navigate back to AutomatedPastor (`cd AutomatedPastor`)
-- [x] Push tests-branch (`git push -u origin tests-branch`)
-- [x] Push code-branch (`git push -u origin code-branch`)
+- [ ] Navigate back to AutomatedPastor (`cd AutomatedPastor`)
+- [ ] Push tests-branch (`git push -u origin tests-branch`)
+- [ ] Push code-branch (`git push -u origin code-branch`)
 
 ### 2.3 Verify Structure
-- [x] Confirm `D:/Projects/AutomatedPastor/` exists (PM works here, on develop)
-- [x] Confirm `D:/Projects/pastor-tests/` exists (Test Writer, on tests-branch)
-- [x] Confirm `D:/Projects/pastor-code/` exists (Code Writer, on code-branch)
+- [ ] Confirm `D:/Projects/AutomatedPastor/` exists (PM works here, on develop)
+- [ ] Confirm `D:/Projects/pastor-tests/` exists (Test Writer, on tests-branch)
+- [ ] Confirm `D:/Projects/pastor-code/` exists (Code Writer, on code-branch)
 
 ---
 
 ## Step 3: Create GitHub Labels
 
 ### 3.1 Agent Assignment Labels
-- [x] Create label `agent:test-writer` (color: 1d76db, desc: "Assigned to Test Writer")
-- [x] Create label `agent:code-writer` (color: 0e8a16, desc: "Assigned to Code Writer")
-- [x] Create label `agent:pm-review` (color: d93f0b, desc: "Ready for PM review")
+- [ ] Create label `agent:test-writer` (color: 1d76db, desc: "Assigned to Test Writer")
+- [ ] Create label `agent:code-writer` (color: 0e8a16, desc: "Assigned to Code Writer")
+- [ ] Create label `agent:pm-review` (color: d93f0b, desc: "Ready for PM review")
 
 ### 3.2 Status Labels
-- [x] Create label `status:waiting` (color: fbca04, desc: "Waiting to be picked up")
-- [x] Create label `status:in-progress` (color: 6f42c1, desc: "Currently being worked")
-- [x] Create label `status:rework` (color: b60205, desc: "Needs rework")
+- [ ] Create label `status:waiting` (color: fbca04, desc: "Waiting to be picked up")
+- [ ] Create label `status:in-progress` (color: 6f42c1, desc: "Currently being worked")
+- [ ] Create label `status:rework` (color: b60205, desc: "Needs rework")
 
 ### 3.3 Work Type Labels
-- [x] Create label `type:tests` (color: c5def5, desc: "Test writing work")
-- [x] Create label `type:implementation` (color: bfd4f2, desc: "Code implementation work")
+- [ ] Create label `type:tests` (color: c5def5, desc: "Test writing work")
+- [ ] Create label `type:implementation` (color: bfd4f2, desc: "Code implementation work")
 
 ### 3.4 Phase Labels
-- [x] Create label `phase:1` (color: c5def5)
-- [x] Create label `phase:2` (color: c5def5)
-- [x] Create label `phase:3` (color: c5def5)
-- [x] Create label `phase:4` (color: c5def5)
-- [x] Create label `phase:5` (color: c5def5)
-- [x] Create label `phase:6` (color: c5def5)
-- [x] Create label `phase:7` (color: c5def5)
-- [x] Create label `phase:8` (color: c5def5)
-- [x] Create label `phase:9` (color: c5def5)
-- [x] Create label `phase:10` (color: c5def5)
+- [ ] Create label `phase:1` (color: c5def5)
+- [ ] Create label `phase:2` (color: c5def5)
+- [ ] Create label `phase:3` (color: c5def5)
+- [ ] Create label `phase:4` (color: c5def5)
+- [ ] Create label `phase:5` (color: c5def5)
+- [ ] Create label `phase:6` (color: c5def5)
+- [ ] Create label `phase:7` (color: c5def5)
+- [ ] Create label `phase:8` (color: c5def5)
+- [ ] Create label `phase:9` (color: c5def5)
+- [ ] Create label `phase:10` (color: c5def5)
 
 ---
 
 ## Step 4: Bootstrap First Issue
 
-- [x] Create first GitHub issue for Test Writer:
+- [ ] Create first GitHub issue for Test Writer:
   - Title: "Write tests for Flask app with health endpoint"
   - Labels: `agent:test-writer`, `status:waiting`, `type:tests`, `phase:1`
   - Body: Feature description, acceptance criteria, files to create
-  - **Issue #1 created:** https://github.com/biomed1205/AutomatedPastor/issues/1
 
 ---
 
 ## Step 5: Create Agent Prompt Files (Optional but Recommended)
 
 ### 5.1 Project Manager Prompt
-- [x] Create `agents/pm_prompt.md` with PM instructions
-- [x] Add explicit code-writer issue template
-- [x] Add sleep 60 for idle behavior
-- [x] Add phase label preservation
-- [x] Add error handling
-- [x] Add project completion check
+- [ ] Create `agents/pm_prompt.md` with PM instructions
 
 ### 5.2 Test Writer Prompt
-- [x] Create `agents/test_writer_prompt.md` with Test Writer instructions
-- [x] Add sleep 60 for idle behavior
-- [x] Add /clear for context management
-- [x] Add project completion check
-- [x] Add NO MOCKS examples
-- [x] Add test quality checklist
+- [ ] Create `agents/test_writer_prompt.md` with Test Writer instructions
 
 ### 5.3 Code Writer Prompt
-- [x] Create `agents/code_writer_prompt.md` with Code Writer instructions
-- [x] Add sleep 60 for idle behavior
-- [x] Add /clear for context management
-- [x] Add project completion check
-- [x] Add security scan instructions
-- [x] Add implementation examples
-
-### 5.4 Launch Guide
-- [x] Create `LAUNCH_GUIDE.md` with quick-start instructions
+- [ ] Create `agents/code_writer_prompt.md` with Code Writer instructions
 
 ---
 
@@ -185,30 +166,12 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 | Step | Status | Date Completed |
 |------|--------|----------------|
 | Step 1: Initialize Repository | **COMPLETE** | 2026-01-10 |
-| Step 2: Set Up Git Worktrees | **COMPLETE** | 2026-01-10 |
-| Step 3: Create GitHub Labels | **COMPLETE** | 2026-01-10 |
-| Step 4: Bootstrap First Issue | **COMPLETE** | 2026-01-10 |
-| Step 5: Create Agent Prompts | **COMPLETE (Enhanced)** | 2026-01-10 |
-| Step 6: Launch Agents | **READY TO START** | |
+| Step 2: Set Up Git Worktrees | Not Started | |
+| Step 3: Create GitHub Labels | Not Started | |
+| Step 4: Bootstrap First Issue | Not Started | |
+| Step 5: Create Agent Prompts | Not Started | |
+| Step 6: Launch Agents | Not Started | |
 | Project Complete | Not Started | |
-
-## What Was Fixed/Added (2026-01-10)
-
-### Critical Fixes
-1. **Added sleep 60** when no work available (prevents API spam)
-2. **Added explicit code-writer issue template** to PM prompt
-3. **Added /clear** for context management between tasks
-4. **Added project completion checks** to all agents
-
-### Enhancements
-1. **Phase label propagation** - phase:N labels preserved across issue chain
-2. **Issue lineage tracking** - original issue numbers referenced in follow-ups
-3. **Error handling** - retry logic for gh/git failures
-4. **NO MOCKS examples** - concrete code examples for real implementations
-5. **Security scan instructions** - common fixes documented
-6. **Implementation patterns** - Flask app factory, DB connection examples
-7. **Test quality checklist** - verify before submission
-8. **LAUNCH_GUIDE.md** - quick-start instructions for launching
 
 ---
 

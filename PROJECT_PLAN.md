@@ -1390,15 +1390,15 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ## Implementation Phases
 
 ### Phase 1: Foundation (Core Application)
-- [x] Set up Flask project structure with WebSocket support
-- [x] Create Dockerfile for containerization
-- [x] Create docker-compose.yml for orchestration
-- [x] Create .dockerignore file
-- [x] Create SQLite database schema (all tables)
-- [x] Build basic UI (create, view, list sermons)
-- [x] Implement CLI bridge to Claude Code
+- [ ] Set up Flask project structure with WebSocket support
+- [ ] Create Dockerfile for containerization
+- [ ] Create docker-compose.yml for orchestration
+- [ ] Create .dockerignore file
+- [ ] Create SQLite database schema (all tables)
+- [ ] Build basic UI (create, view, list sermons)
+- [ ] Implement CLI bridge to Claude Code
 - [ ] Implement single-agent sermon generation
-- [x] Add simple password authentication
+- [ ] Add simple password authentication
 - [ ] Add export to Word/PDF
 - [ ] Reference material input (text notes, file upload, URLs)
 - [ ] File processing for PDFs and Word docs
