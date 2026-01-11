@@ -1459,7 +1459,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Previous sermon detection (warn if topic recently preached)
 
 ### Phase 9: UI/UX Design
-- [ ] Use `/frontend-design` skill for entire app look/feel
+- [x] Use `/frontend-design` skill for entire app look/feel
 - [x] Design system: colors, typography, spacing, components
 - [x] Warm, inviting aesthetic appropriate for pastoral tool
 - [x] Clean, uncluttered interface for focus during sermon prep
