@@ -703,6 +703,42 @@ If you complete an action and there's nothing else to do:
 - Do NOT create duplicate issues
 - Check issue list before creating new issues
 
+### IDLE LOOP COUNTER - Documentation Review Task
+
+Track consecutive idle loops (no PM review work AND no work to assign):
+
+**After 2 consecutive idle loops:** Perform a documentation review instead of just waiting.
+
+**Documentation Review Task:**
+1. Check key documentation files for accuracy:
+   - README.md - Does it reflect current features?
+   - CHANGELOG.md - Are recent changes documented?
+   - API.md - Are all endpoints documented?
+   - ARCHITECTURE.md - Does it match current structure?
+   - PROJECT_PLAN.md - Are completed items marked?
+
+2. Review what has been completed since last doc update:
+   \`\`\`bash
+   git log --oneline -20  # See recent commits
+   \`\`\`
+
+3. Update any outdated documentation:
+   - Add new features to README
+   - Add changelog entries for completed work
+   - Document new API endpoints
+   - Update architecture diagrams if needed
+
+4. Commit documentation updates:
+   \`\`\`bash
+   git add README.md CHANGELOG.md API.md ARCHITECTURE.md
+   git commit -m "docs: update documentation for recent features"
+   git push origin develop
+   \`\`\`
+
+5. Reset idle loop counter after documentation review
+
+**This keeps PM productive during worker busy periods while maintaining project documentation.**
+
 ## ERROR HANDLING
 
 If any git or gh command fails:
