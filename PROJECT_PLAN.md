@@ -1462,8 +1462,8 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [ ] Use `/frontend-design` skill for entire app look/feel
 - [x] Design system: colors, typography, spacing, components
 - [x] Warm, inviting aesthetic appropriate for pastoral tool
-- [ ] Clean, uncluttered interface for focus during sermon prep
-- [ ] Mobile-responsive design
+- [x] Clean, uncluttered interface for focus during sermon prep
+- [x] Mobile-responsive design
 - [x] Accessibility considerations
 
 ### Phase 10: Polish
