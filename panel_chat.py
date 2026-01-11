@@ -527,3 +527,119 @@ class PanelChat:
     def end(self, discussion_id):
         """End a discussion."""
         return end_discussion(self.db_conn, discussion_id)
+
+
+# =============================================================================
+# @ Mention Parsing Functions
+# =============================================================================
+
+import re
+
+
+def extract_mention_patterns(message):
+    """Extract all @mention patterns from a message.
+
+    This extracts the raw patterns without validating against reviewer names.
+    Handles edge cases like emails (text@domain) and lone @ symbols.
+
+    Args:
+        message: The message text to parse.
+
+    Returns:
+        list: List of extracted patterns (without @ symbol).
+    """
+    if not message or not message.strip():
+        return []
+
+    # Pattern to match @word where:
+    # - Not preceded by alphanumeric (to avoid emails like user@domain)
+    # - Followed by word characters
+    # - Word must start with a letter (not number)
+    pattern = r'(?<![a-zA-Z0-9])@([a-zA-Z][a-zA-Z0-9_]*)'
+
+    matches = re.findall(pattern, message)
+    return matches
+
+
+def parse_mentions(message, valid_reviewers):
+    """Parse @mentions from a message and return valid reviewer names.
+
+    Args:
+        message: The message text to parse.
+        valid_reviewers: List of valid reviewer names to match against.
+
+    Returns:
+        list: List of valid, lowercase, unique reviewer names found.
+    """
+    if not message or not message.strip():
+        return []
+
+    if not valid_reviewers:
+        return []
+
+    # Extract all @patterns
+    patterns = extract_mention_patterns(message)
+
+    # Normalize valid reviewers to lowercase for matching
+    valid_lower = {r.lower() for r in valid_reviewers}
+
+    # Match patterns against valid reviewers (case-insensitive)
+    found = set()
+    for pattern in patterns:
+        pattern_lower = pattern.lower()
+        if pattern_lower in valid_lower:
+            found.add(pattern_lower)
+
+    return list(found)
+
+
+def parse_mentions_with_db(conn, message, default_reviewers):
+    """Parse @mentions including custom reviewers from database.
+
+    Args:
+        conn: Database connection with custom_reviewers table.
+        message: The message text to parse.
+        default_reviewers: List of default reviewer names.
+
+    Returns:
+        list: List of valid, lowercase, unique reviewer names found.
+    """
+    if not message or not message.strip():
+        return []
+
+    # Get active custom reviewers from database
+    custom_reviewers = []
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name FROM custom_reviewers WHERE active = 1"
+        )
+        rows = cursor.fetchall()
+        custom_reviewers = [
+            row[0] if isinstance(row, tuple) else row['name']
+            for row in rows
+        ]
+    except Exception:
+        # Table may not exist or be empty
+        pass
+
+    # Combine default and custom reviewers
+    all_reviewers = list(default_reviewers) + custom_reviewers
+
+    return parse_mentions(message, all_reviewers)
+
+
+def get_mentioned_reviewers(conn, message, default_reviewers):
+    """Get reviewers mentioned in a message for routing.
+
+    This is a convenience function for routing messages to specific reviewers.
+
+    Args:
+        conn: Database connection with custom_reviewers table.
+        message: The message text to parse.
+        default_reviewers: List of default reviewer names.
+
+    Returns:
+        list: List of reviewer names to route the message to.
+    """
+    return parse_mentions_with_db(conn, message, default_reviewers)
