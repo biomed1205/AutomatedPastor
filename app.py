@@ -66,6 +66,11 @@ def create_app(config=None, testing=False):
                 "INSERT INTO sermons (id, title, scripture, manuscript) VALUES (?, ?, ?, ?)",
                 (1, 'Test Sermon', 'John 3:16', 'Test manuscript content')
             )
+            # Add test discussion for chat UI tests
+            cursor.execute(
+                "INSERT INTO panel_discussions (id, sermon_id, status) VALUES (?, ?, ?)",
+                (1, 1, 'active')
+            )
             conn.commit()
 
     # Set secret key for sessions
@@ -937,6 +942,130 @@ h1 { color: #666; }
             yield 'data: {"event": "connected"}\n\n'
 
         return app.response_class(generate(), mimetype='text/event-stream')
+
+    # Chat UI routes
+    @app.route('/chat/<int:discussion_id>')
+    def chat_page(discussion_id):
+        """Chat page for a discussion."""
+        from chat_ui import prepare_chat_context
+        from panel_chat import get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return "Discussion not found", 404
+
+        context = prepare_chat_context(conn, discussion_id)
+
+        html_content = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>The Green Room - Discussion {discussion_id}</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body {{ font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
+        .messages {{ height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }}
+        .message {{ margin: 10px 0; padding: 10px; border-radius: 5px; }}
+        .message.user {{ background: #e3f2fd; margin-left: 50px; }}
+        .message.reviewer {{ background: #f5f5f5; margin-right: 50px; }}
+        .sender {{ font-weight: bold; }}
+        .time {{ color: #666; font-size: 0.8em; }}
+        .input-area {{ display: flex; }}
+        .input-area input {{ flex: 1; padding: 10px; }}
+        .input-area button {{ padding: 10px 20px; }}
+    </style>
+</head>
+<body>
+    <h1>The Green Room</h1>
+    <p>Status: {context.get('status', 'unknown')}</p>
+    <div class="messages" id="messages">
+        {''.join(f'<div class="message {m.get("sender_type", "reviewer")}"><span class="sender">{m.get("sender", "")}</span>: {m.get("content", "")}</div>' for m in context.get('messages', []))}
+    </div>
+    <div class="input-area">
+        <input type="text" id="message" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    <script>
+        const socket = io();
+        socket.emit('join', {{discussion_id: {discussion_id}}});
+        socket.on('new_message', function(msg) {{
+            const div = document.createElement('div');
+            div.className = 'message ' + msg.sender_type;
+            div.innerHTML = '<span class="sender">' + msg.sender + '</span>: ' + msg.content;
+            document.getElementById('messages').appendChild(div);
+        }});
+        function sendMessage() {{
+            const input = document.getElementById('message');
+            fetch('/chat/{discussion_id}/message', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{content: input.value}})
+            }});
+            input.value = '';
+        }}
+    </script>
+</body>
+</html>'''
+        return html_content, 200, {'Content-Type': 'text/html'}
+
+    @app.route('/chat/<int:discussion_id>/message', methods=['POST'])
+    def chat_post_message(discussion_id):
+        """Post a message to a chat discussion."""
+        from panel_chat import get_discussion_by_id, post_user_message
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        data = request.get_json() or {}
+        content = data.get('content', '')
+
+        if not content or not content.strip():
+            return jsonify({'error': 'Message cannot be empty'}), 400
+
+        message = post_user_message(conn, discussion_id, content)
+        return jsonify(message.to_dict()), 201
+
+    @app.route('/sermon/<int:sermon_id>/start-chat', methods=['POST'])
+    def sermon_start_chat(sermon_id):
+        """Start a new chat discussion for a sermon."""
+        from panel_chat import start_discussion
+        from cli_bridge import CLIBridge
+
+        conn = get_db()
+        init_db(conn)
+
+        participants = request.form.getlist('participants') or ['theological', 'structural']
+
+        bridge = CLIBridge(command='echo')
+        discussion = start_discussion(
+            conn, bridge,
+            sermon_id=sermon_id,
+            participants=participants
+        )
+
+        return redirect(url_for('chat_page', discussion_id=discussion.id))
+
+    @app.route('/api/chat/<int:discussion_id>/messages')
+    def api_chat_messages(discussion_id):
+        """API endpoint for getting chat messages."""
+        from chat_ui import get_message_history
+        from panel_chat import get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        messages = get_message_history(conn, discussion_id)
+        return jsonify({'messages': messages, 'count': len(messages)}), 200
 
     return app
 
