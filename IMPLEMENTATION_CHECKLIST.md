@@ -119,12 +119,30 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 
 ### 5.1 Project Manager Prompt
 - [x] Create `agents/pm_prompt.md` with PM instructions
+- [x] Add explicit code-writer issue template
+- [x] Add sleep 60 for idle behavior
+- [x] Add phase label preservation
+- [x] Add error handling
+- [x] Add project completion check
 
 ### 5.2 Test Writer Prompt
 - [x] Create `agents/test_writer_prompt.md` with Test Writer instructions
+- [x] Add sleep 60 for idle behavior
+- [x] Add /clear for context management
+- [x] Add project completion check
+- [x] Add NO MOCKS examples
+- [x] Add test quality checklist
 
 ### 5.3 Code Writer Prompt
 - [x] Create `agents/code_writer_prompt.md` with Code Writer instructions
+- [x] Add sleep 60 for idle behavior
+- [x] Add /clear for context management
+- [x] Add project completion check
+- [x] Add security scan instructions
+- [x] Add implementation examples
+
+### 5.4 Launch Guide
+- [x] Create `LAUNCH_GUIDE.md` with quick-start instructions
 
 ---
 
@@ -170,9 +188,27 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 | Step 2: Set Up Git Worktrees | **COMPLETE** | 2026-01-10 |
 | Step 3: Create GitHub Labels | **COMPLETE** | 2026-01-10 |
 | Step 4: Bootstrap First Issue | **COMPLETE** | 2026-01-10 |
-| Step 5: Create Agent Prompts | **COMPLETE** | 2026-01-10 |
-| Step 6: Launch Agents | Not Started | |
+| Step 5: Create Agent Prompts | **COMPLETE (Enhanced)** | 2026-01-10 |
+| Step 6: Launch Agents | **READY TO START** | |
 | Project Complete | Not Started | |
+
+## What Was Fixed/Added (2026-01-10)
+
+### Critical Fixes
+1. **Added sleep 60** when no work available (prevents API spam)
+2. **Added explicit code-writer issue template** to PM prompt
+3. **Added /clear** for context management between tasks
+4. **Added project completion checks** to all agents
+
+### Enhancements
+1. **Phase label propagation** - phase:N labels preserved across issue chain
+2. **Issue lineage tracking** - original issue numbers referenced in follow-ups
+3. **Error handling** - retry logic for gh/git failures
+4. **NO MOCKS examples** - concrete code examples for real implementations
+5. **Security scan instructions** - common fixes documented
+6. **Implementation patterns** - Flask app factory, DB connection examples
+7. **Test quality checklist** - verify before submission
+8. **LAUNCH_GUIDE.md** - quick-start instructions for launching
 
 ---
 
