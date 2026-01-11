@@ -1393,7 +1393,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Set up Flask project structure with WebSocket support
 - [x] Create Dockerfile for containerization
 - [x] Create docker-compose.yml for orchestration
-- [ ] Create .dockerignore file
+- [x] Create .dockerignore file
 - [x] Create SQLite database schema (all tables)
 - [ ] Build basic UI (create, view, list sermons)
 - [ ] Implement CLI bridge to Claude Code
