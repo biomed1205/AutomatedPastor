@@ -219,11 +219,31 @@ If syntax errors, fix them before proceeding.
 pytest tests/unit/test_[feature].py -v --tb=short
 \`\`\`
 
-**Expected Result:** Tests should FAIL because no implementation exists yet.
-- If tests pass unexpectedly, something is wrong with the tests
-- If import errors occur, adjust imports to match expected module structure
+**Expected Result:** Tests should FAIL or ERROR because no implementation exists yet.
 
-Note the test results for the review issue body.
+**Understanding Test Results:**
+
+1. **ModuleNotFoundError / ImportError** - EXPECTED and CORRECT
+   - Example: \`ModuleNotFoundError: No module named 'app'\`
+   - This means your test is trying to import the module that doesn't exist yet
+   - This is CORRECT - the Code Writer will create this module
+   - Do NOT try to fix this by creating the module yourself
+
+2. **AssertionError** - EXPECTED and CORRECT
+   - Means the test ran but the assertion failed
+   - This is also correct TDD behavior
+
+3. **SyntaxError** - BAD, fix before committing
+   - This means your test file has Python syntax errors
+   - Fix these before proceeding
+
+4. **All tests PASS** - SUSPICIOUS
+   - If tests pass, they might not be testing real behavior
+   - Review your tests to ensure they actually test the implementation
+
+**The key point:** Import errors and test failures are EXPECTED. You are writing tests for code that doesn't exist yet. The Code Writer will create the implementation.
+
+Note the test results (including any errors) for the review issue body.
 
 ---
 

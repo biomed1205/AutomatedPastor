@@ -104,16 +104,22 @@ Check the issue labels from Step 1 output:
 
 ### STEP 4A: Review TEST WRITER Work
 
-**EXPECTATION: Tests should FAIL because no implementation exists yet.**
+**EXPECTATION: Tests should FAIL or ERROR because no implementation exists yet.**
 
 \`\`\`bash
 # Find the test file mentioned in the issue body
 # Verify it exists and has correct syntax
 python -m py_compile tests/unit/test_app.py  # Adjust path based on issue
 
-# Run the tests - FAILURES ARE EXPECTED
+# Run the tests - FAILURES/ERRORS ARE EXPECTED
 pytest tests/ -v --tb=short || echo 'Tests failed as expected - no implementation yet'
 \`\`\`
+
+**Understanding Expected Test Results:**
+- **ModuleNotFoundError**: CORRECT - the module doesn't exist yet, Code Writer will create it
+- **ImportError**: CORRECT - same reason as above
+- **AssertionError**: CORRECT - test ran but implementation doesn't work yet
+- **SyntaxError**: BAD - Test Writer should fix syntax errors before committing
 
 **Review Criteria:**
 - [ ] Test file exists at specified path
@@ -195,7 +201,16 @@ Original issue: #[NUMBER]'
 
 ### STEP 4B: Review CODE WRITER Work
 
-**EXPECTATION: All tests MUST PASS.**
+**First, determine the type of implementation:**
+
+Check the issue title/body:
+- If it's Python code (Flask, database, etc.) → Run pytest
+- If it's Dockerfile/docker-compose → Run Docker commands
+- If it's config/static files → Check file existence and content
+
+---
+
+**For PYTHON CODE - Run tests:**
 
 \`\`\`bash
 # Run all tests - they MUST pass
@@ -208,12 +223,51 @@ pytest --cov=. --cov-report=term-missing --cov-fail-under=80
 bandit -r . -x ./tests,./venv -f txt
 \`\`\`
 
-**Review Criteria:**
+**Review Criteria for Python:**
 - [ ] ALL tests pass (zero failures)
 - [ ] Coverage >= 80%
 - [ ] Security scan is clean (no high/medium issues)
 - [ ] Code uses real implementations (no mocks)
 - [ ] Code follows existing patterns
+
+---
+
+**For DOCKERFILE/DOCKER-COMPOSE:**
+
+\`\`\`bash
+# Verify Dockerfile builds
+docker build -t automated-pastor-test . || echo 'Docker build failed'
+
+# Verify docker-compose is valid
+docker-compose config || echo 'docker-compose config invalid'
+
+# Clean up test image
+docker rmi automated-pastor-test 2>/dev/null || true
+\`\`\`
+
+**Review Criteria for Docker:**
+- [ ] docker build succeeds
+- [ ] docker-compose config is valid
+- [ ] Dockerfile follows best practices (multi-stage if appropriate)
+- [ ] Correct ports exposed (8787)
+- [ ] Health check configured
+
+---
+
+**For CONFIG/STATIC FILES:**
+
+\`\`\`bash
+# Verify file exists
+ls -la [FILENAME]
+
+# Check content is reasonable
+cat [FILENAME] | head -20
+\`\`\`
+
+**Review Criteria for Config:**
+- [ ] File exists at correct location
+- [ ] Content is valid and complete
+- [ ] No secrets committed (check for API keys, passwords)
 
 **If ALL pass → APPROVE:**
 
@@ -337,7 +391,25 @@ gh issue list --label 'status:in-progress' --json number --jq 'length'
 Read PROJECT_PLAN.md:
 1. Find the first phase (1-10) that has unchecked \`- [ ]\` items
 2. Find the first unchecked item in that phase
-3. Create a Test Writer issue for that feature
+3. Determine if it needs tests or is a direct code task:
+
+**TESTABLE items (need Test Writer first):**
+- Python modules, classes, functions
+- Flask routes and endpoints
+- Database operations
+- Authentication logic
+- File processing
+- CLI operations
+
+**NON-TESTABLE items (skip Test Writer, create Code Writer issue directly):**
+- Dockerfile, docker-compose.yml, .dockerignore
+- Static HTML/CSS templates (without logic)
+- Configuration files (.env.example, etc.)
+- Documentation files
+
+---
+
+**For TESTABLE items - Create Test Writer issue:**
 
 \`\`\`bash
 gh issue create --title 'Write tests for [FEATURE NAME]' \
@@ -368,6 +440,41 @@ gh issue create --title 'Write tests for [FEATURE NAME]' \
 Phase N: [Phase name/description]
 Previous work: [what has been done]
 This enables: [what this feature enables]'
+\`\`\`
+
+**Exit this iteration.**
+
+---
+
+**For NON-TESTABLE items - Create Code Writer issue directly:**
+
+\`\`\`bash
+gh issue create --title 'Create [ITEM NAME]' \
+  --label 'agent:code-writer' \
+  --label 'status:waiting' \
+  --label 'type:implementation' \
+  --label 'phase:N' \
+  --body '## Item to Create
+[Item name from PROJECT_PLAN.md]
+
+## Description
+[What this file/config should contain]
+
+## Acceptance Criteria
+- File exists at correct location
+- File has correct content/structure
+- [For Docker: docker build succeeds]
+- [For config: application can read it]
+
+## Verification
+When reviewing, PM will verify by:
+- [docker build . for Dockerfile]
+- [docker-compose config for docker-compose.yml]
+- [File existence and content check]
+
+## Notes
+This item does not require pytest tests.
+Just create the file with correct content.'
 \`\`\`
 
 **Exit this iteration.**
