@@ -841,6 +841,103 @@ h1 { color: #666; }
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
+    # Panel chat routes
+    @app.route('/api/discussion/start', methods=['POST'])
+    def api_start_discussion():
+        """API endpoint for starting a panel discussion."""
+        from panel_chat import start_discussion, InsufficientParticipantsError
+        from cli_bridge import CLIBridge
+
+        conn = get_db()
+        init_db(conn)
+        data = request.get_json() or {}
+
+        sermon_id = data.get('sermon_id')
+        participants = data.get('participants', [])
+        mode = data.get('mode', 'discussion')
+
+        if not sermon_id:
+            return jsonify({'error': 'sermon_id required'}), 400
+
+        try:
+            bridge = CLIBridge(command='echo')
+            discussion = start_discussion(
+                conn, bridge,
+                sermon_id=sermon_id,
+                participants=participants,
+                mode=mode
+            )
+            return jsonify(discussion.to_dict()), 201
+        except InsufficientParticipantsError as e:
+            return jsonify({'error': str(e)}), 400
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    @app.route('/api/discussion/<int:discussion_id>/messages')
+    def api_get_discussion_messages(discussion_id):
+        """API endpoint for getting discussion messages."""
+        from panel_chat import get_message_history, get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        messages = get_message_history(conn, discussion_id)
+        return jsonify({'messages': messages, 'count': len(messages)}), 200
+
+    @app.route('/api/discussion/<int:discussion_id>/message', methods=['POST'])
+    def api_post_discussion_message(discussion_id):
+        """API endpoint for posting a message to a discussion."""
+        from panel_chat import post_user_message, get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        data = request.get_json() or {}
+        content = data.get('content', '')
+
+        message = post_user_message(conn, discussion_id, content)
+        return jsonify(message.to_dict()), 201
+
+    @app.route('/api/discussion/<int:discussion_id>/end', methods=['POST'])
+    def api_end_discussion(discussion_id):
+        """API endpoint for ending a discussion."""
+        from panel_chat import end_discussion, get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        ended = end_discussion(conn, discussion_id)
+        return jsonify(ended.to_dict()), 200
+
+    @app.route('/api/discussion/<int:discussion_id>/stream')
+    def api_discussion_stream(discussion_id):
+        """SSE endpoint for real-time discussion updates."""
+        from panel_chat import get_discussion_by_id
+
+        conn = get_db()
+        init_db(conn)
+
+        discussion = get_discussion_by_id(conn, discussion_id)
+        if not discussion:
+            return jsonify({'error': 'Discussion not found'}), 404
+
+        def generate():
+            yield 'data: {"event": "connected"}\n\n'
+
+        return app.response_class(generate(), mimetype='text/event-stream')
+
     return app
 
 
