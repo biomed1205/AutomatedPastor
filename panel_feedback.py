@@ -459,7 +459,11 @@ Provide feedback in JSON format with: reviewer, focus, rating, score (1-5), comm
         if not sermon or not sermon.strip():
             raise EmptySermonError("Sermon cannot be empty")
 
-        reviewer_types = reviewers if reviewers else list(DEFAULT_REVIEWER_TYPES.keys())
+        if reviewers:
+            reviewer_types = reviewers
+        else:
+            # Include default and any added custom reviewers
+            reviewer_types = list(self._reviewers.keys())
         feedbacks = []
 
         if parallel:
@@ -487,3 +491,55 @@ Provide feedback in JSON format with: reviewer, focus, rating, score (1-5), comm
                     pass
 
         return feedbacks
+
+    def add_custom_reviewer(self, reviewer):
+        """Add a custom reviewer to the panel.
+
+        Args:
+            reviewer: CustomReviewer instance or dict with identifier, name, focus_area.
+        """
+        if hasattr(reviewer, 'identifier'):
+            identifier = reviewer.identifier
+            self._reviewers[identifier] = {
+                'name': reviewer.name,
+                'identifier': identifier,
+                'focus': reviewer.focus_area,
+                'prompt': reviewer.prompt_template or '',
+                'type': 'custom'
+            }
+        else:
+            identifier = reviewer.get('identifier', reviewer.get('name', '').lower().replace(' ', '_'))
+            self._reviewers[identifier] = {
+                'name': reviewer.get('name', identifier),
+                'identifier': identifier,
+                'focus': reviewer.get('focus_area', reviewer.get('focus', '')),
+                'prompt': reviewer.get('prompt_template', reviewer.get('prompt', '')),
+                'type': 'custom'
+            }
+
+    def has_reviewer(self, identifier):
+        """Check if a reviewer exists.
+
+        Args:
+            identifier: Reviewer identifier.
+
+        Returns:
+            bool: True if reviewer exists.
+        """
+        return identifier in self._reviewers
+
+    def list_all_reviewers(self):
+        """List all reviewers including custom ones.
+
+        Returns:
+            list: List of reviewer info dicts.
+        """
+        return [
+            {
+                'identifier': key,
+                'name': value.get('name', key),
+                'focus': value.get('focus', ''),
+                'type': value.get('type', 'default')
+            }
+            for key, value in self._reviewers.items()
+        ]
