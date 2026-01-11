@@ -157,7 +157,7 @@ class TestExtractTextFromPDF:
 
     def test_should_handle_password_protected_pdf(self):
         """Test that password-protected PDF raises appropriate error."""
-        from file_processing import extract_text_from_pdf, PasswordProtectedError
+        from file_processing import extract_text_from_pdf, PasswordProtectedError, FileProcessingError
 
         # Create a password-protected PDF is complex, so test the error handling
         # by using a manually created encrypted PDF header
