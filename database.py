@@ -196,10 +196,12 @@ def init_db(conn):
         CREATE TABLE IF NOT EXISTS reference_materials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sermon_id INTEGER NOT NULL,
+            material_type TEXT,
             type TEXT,
             title TEXT,
             content TEXT,
             file_path TEXT,
+            filename TEXT,
             url TEXT,
             usage_mode TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

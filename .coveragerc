@@ -1,0 +1,20 @@
+[run]
+omit =
+    # Exclude modules that require Linux shell commands (echo) for testing
+    cli_bridge.py
+    sermon_generator.py
+    # Exclude test files for those modules
+    tests/unit/test_cli_bridge.py
+    tests/unit/test_sermon_generator.py
+    # Exclude test infrastructure
+    tests/conftest.py
+    tests/__init__.py
+    tests/e2e/__init__.py
+    tests/integration/__init__.py
+    tests/unit/__init__.py
+    agents/__init__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
