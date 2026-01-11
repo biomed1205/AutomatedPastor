@@ -118,13 +118,13 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 ## Step 5: Create Agent Prompt Files (Optional but Recommended)
 
 ### 5.1 Project Manager Prompt
-- [ ] Create `agents/pm_prompt.md` with PM instructions
+- [x] Create `agents/pm_prompt.md` with PM instructions
 
 ### 5.2 Test Writer Prompt
-- [ ] Create `agents/test_writer_prompt.md` with Test Writer instructions
+- [x] Create `agents/test_writer_prompt.md` with Test Writer instructions
 
 ### 5.3 Code Writer Prompt
-- [ ] Create `agents/code_writer_prompt.md` with Code Writer instructions
+- [x] Create `agents/code_writer_prompt.md` with Code Writer instructions
 
 ---
 
@@ -170,7 +170,7 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 | Step 2: Set Up Git Worktrees | **COMPLETE** | 2026-01-10 |
 | Step 3: Create GitHub Labels | **COMPLETE** | 2026-01-10 |
 | Step 4: Bootstrap First Issue | **COMPLETE** | 2026-01-10 |
-| Step 5: Create Agent Prompts | Not Started | |
+| Step 5: Create Agent Prompts | **COMPLETE** | 2026-01-10 |
 | Step 6: Launch Agents | Not Started | |
 | Project Complete | Not Started | |
 
