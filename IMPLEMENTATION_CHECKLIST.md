@@ -107,10 +107,11 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 
 ## Step 4: Bootstrap First Issue
 
-- [ ] Create first GitHub issue for Test Writer:
+- [x] Create first GitHub issue for Test Writer:
   - Title: "Write tests for Flask app with health endpoint"
   - Labels: `agent:test-writer`, `status:waiting`, `type:tests`, `phase:1`
   - Body: Feature description, acceptance criteria, files to create
+  - **Issue #1 created:** https://github.com/biomed1205/AutomatedPastor/issues/1
 
 ---
 
@@ -168,7 +169,7 @@ This checklist is derived from ONE_SHOT_GUIDE.md. Check off items as completed.
 | Step 1: Initialize Repository | **COMPLETE** | 2026-01-10 |
 | Step 2: Set Up Git Worktrees | **COMPLETE** | 2026-01-10 |
 | Step 3: Create GitHub Labels | **COMPLETE** | 2026-01-10 |
-| Step 4: Bootstrap First Issue | Not Started | |
+| Step 4: Bootstrap First Issue | **COMPLETE** | 2026-01-10 |
 | Step 5: Create Agent Prompts | Not Started | |
 | Step 6: Launch Agents | Not Started | |
 | Project Complete | Not Started | |
