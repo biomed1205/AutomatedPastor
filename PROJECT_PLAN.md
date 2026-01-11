@@ -1455,7 +1455,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Lectionary calendar integration
 - [x] Illustration deduplication
 - [x] Theme/scripture usage tracking
-- [ ] Church context awareness
+- [x] Church context awareness
 - [ ] Previous sermon detection (warn if topic recently preached)
 
 ### Phase 9: UI/UX Design
