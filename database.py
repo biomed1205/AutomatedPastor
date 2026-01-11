@@ -224,16 +224,34 @@ def init_db(conn):
         )
     """)
 
-    # Create chat_messages table (cascade delete when session deleted)
+    # Create panel_discussions table for The Green Room
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS panel_discussions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER,
+            mode TEXT DEFAULT 'discussion',
+            status TEXT DEFAULT 'active',
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ended_at TIMESTAMP,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create chat_messages table (supports both session and discussion)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
+            session_id INTEGER,
+            discussion_id INTEGER,
             sender TEXT,
+            sender_type TEXT,
             message TEXT,
+            content TEXT,
+            reply_to_id INTEGER,
             mentioned_panelists TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (discussion_id) REFERENCES panel_discussions(id) ON DELETE CASCADE
         )
     """)
 
