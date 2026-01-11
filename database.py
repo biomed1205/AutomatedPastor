@@ -5,19 +5,52 @@ for all application tables.
 """
 import sqlite3
 
+# Module-level storage for in-memory database connections (for testing)
+_memory_db_cache = {}
 
-def get_db(db_path):
+
+def get_db(db_path=None):
     """Get a database connection.
 
     Args:
         db_path: Path to SQLite database file, or ':memory:' for in-memory database.
+                 If None, uses Flask's g and current_app.config['DATABASE'].
 
     Returns:
         sqlite3.Connection: Database connection with row factory set.
     """
+    if db_path is None:
+        # Use Flask's application context
+        from flask import g, current_app
+        if 'db' not in g:
+            db_path = current_app.config.get('DATABASE', ':memory:')
+            # For in-memory databases, use a cached connection so all requests share the same DB
+            if db_path == ':memory:':
+                app_id = id(current_app._get_current_object())
+                if app_id not in _memory_db_cache:
+                    conn = sqlite3.connect(':memory:', check_same_thread=False)
+                    conn.row_factory = sqlite3.Row
+                    _memory_db_cache[app_id] = conn
+                g.db = _memory_db_cache[app_id]
+            else:
+                g.db = sqlite3.connect(db_path)
+                g.db.row_factory = sqlite3.Row
+        return g.db
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def clear_memory_db_cache():
+    """Clear the in-memory database cache (for testing)."""
+    global _memory_db_cache
+    for conn in _memory_db_cache.values():
+        try:
+            conn.close()
+        except Exception:
+            pass
+    _memory_db_cache = {}
 
 
 def close_db(conn):
