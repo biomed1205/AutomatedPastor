@@ -18,7 +18,8 @@ All notable changes to AutomatedPastor will be documented in this file.
 - **Export**: Word (python-docx) and PDF (reportlab) export functionality
 - **Sermon Generation**: Single-agent sermon generation with Claude CLI integration
 - **Reference Materials**: Text notes, file upload, URL support with Flask routes
-- **Test Suite**: 247 passing tests
+- **File Processing**: PDF, Word document, and text file extraction (pypdf, python-docx)
+- **Test Suite**: 272 passing tests
   - App tests (12)
   - Database tests (49)
   - Authentication tests (33)
@@ -27,9 +28,9 @@ All notable changes to AutomatedPastor will be documented in this file.
   - Sermon Generator tests (29)
   - CLI Bridge tests (36)
   - Reference Materials tests (32)
+  - File Processing tests (25)
 
 ### In Progress
-- File processing for PDFs/Word docs (25 tests written, implementation pending)
 - Docker build verification
 
 ### Technical

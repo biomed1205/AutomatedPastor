@@ -1401,7 +1401,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Add simple password authentication
 - [x] Add export to Word/PDF
 - [x] Reference material input (text notes, file upload, URLs)
-- [ ] File processing for PDFs and Word docs
+- [x] File processing for PDFs and Word docs
 - [ ] Verify Docker build and health endpoint work
 
 ### Phase 2: Skills & Multi-Agent System
