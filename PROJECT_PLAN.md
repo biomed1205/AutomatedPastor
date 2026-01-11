@@ -1456,7 +1456,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Illustration deduplication
 - [x] Theme/scripture usage tracking
 - [x] Church context awareness
-- [ ] Previous sermon detection (warn if topic recently preached)
+- [x] Previous sermon detection (warn if topic recently preached)
 
 ### Phase 9: UI/UX Design
 - [ ] Use `/frontend-design` skill for entire app look/feel
