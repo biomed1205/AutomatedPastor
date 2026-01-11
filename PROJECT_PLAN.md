@@ -1443,13 +1443,13 @@ Share sermon drafts with staff or spouse for input before finalizing.
 - [x] Review status dashboard
 
 ### Phase 7: Sermon Archive
-- [ ] Archive list view with year/month organization
-- [ ] Archive detail view with all materials
-- [ ] Confirm preached functionality
-- [ ] Post-sermon notes
-- [ ] Search and filter
-- [ ] Statistics dashboard
-- [ ] Full archive export/backup
+- [x] Archive list view with year/month organization
+- [x] Archive detail view with all materials
+- [x] Confirm preached functionality
+- [x] Post-sermon notes
+- [x] Search and filter
+- [x] Statistics dashboard
+- [x] Full archive export/backup
 
 ### Phase 8: Enhanced Features
 - [ ] Lectionary calendar integration
