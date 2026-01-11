@@ -1469,7 +1469,7 @@ Share sermon drafts with staff or spouse for input before finalizing.
 ### Phase 10: Polish
 - [x] Practice timing feature
 - [x] User preferences/settings
-- [ ] Documentation and help
+- [x] Documentation and help
 - [ ] run.bat one-click startup
 
 ---
