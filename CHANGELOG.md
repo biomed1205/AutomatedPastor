@@ -2,6 +2,24 @@
 
 All notable changes to AutomatedPastor will be documented in this file.
 
+## [Phase 2] - 2026-01-11 (IN PROGRESS)
+
+### Added
+- **17 Skill Prompt Files**: Sermon generation skills (homiletics, theology, illustration, etc.)
+- **7 Agent Templates**: Orchestrator, researcher, writer, reviewer personas
+- **Orchestrator**: Skill invocation, parallel execution, chaining (30 tests)
+- **Revision Agent**: Incorporates panel feedback into sermons (31 tests)
+- **Test Suites**:
+  - Orchestrator tests (30)
+  - Parallel Research tests (23)
+  - Revision Agent tests (31)
+  - Panel Feedback tests (36)
+
+### Technical
+- Phase 2: 3/6 items complete
+- Phase 3: 2/5 items complete
+- Security Scan: Clean (LOW severity only)
+
 ## [Phase 1] - 2026-01-11 (COMPLETE)
 
 ### Added
