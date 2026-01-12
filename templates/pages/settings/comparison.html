@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+
+{% block title %}Provider Comparison - AutomatedPastor{% endblock %}
+
+{% block content %}
+<div x-data="providerComparison()" x-init="loadProviders()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="font-heading text-2xl lg:text-3xl font-bold text-earth-800">Provider Comparison</h1>
+            <p class="mt-1 text-earth-500">Compare outputs from different AI providers side-by-side</p>
+        </div>
+    </div>
+
+    <!-- Prompt Input Section -->
+    <div class="bg-white rounded-2xl shadow-sm border border-earth-100 p-6">
+        <h2 class="font-heading text-lg font-semibold text-earth-800 mb-4">Test Prompt</h2>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-earth-700 mb-1">Enter a prompt to compare</label>
+                <textarea x-model="prompt"
+                          rows="4"
+                          placeholder="Write a brief introduction for a sermon on John 3:16..."
+                          class="w-full px-4 py-3 border border-earth-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"></textarea>
+            </div>
+
+            <!-- Provider Selection -->
+            <div>
+                <label class="block text-sm font-medium text-earth-700 mb-3">Select providers to compare</label>
+                <div class="flex flex-wrap gap-3">
+                    <template x-for="provider in providers" :key="provider.provider_name">
+                        <label class="flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all"
+                               :class="selectedProviders.includes(provider.provider_name)
+                                   ? 'border-primary-500 bg-primary-50 text-primary-700'
+                                   : 'border-earth-200 bg-white text-earth-600 hover:border-earth-300'">
+                            <input type="checkbox"
+                                   :value="provider.provider_name"
+                                   @change="toggleProvider(provider.provider_name)"
+                                   :checked="selectedProviders.includes(provider.provider_name)"
+                                   class="sr-only">
+                            <div class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold"
+                                 :style="`background-color: ${provider.color_bg}; color: ${provider.color_primary}`">
+                                <span x-text="provider.display_name.charAt(0)"></span>
+                            </div>
+                            <span class="font-medium" x-text="provider.display_name"></span>
+                            <span x-show="!provider.is_enabled" class="text-xs text-earth-400">(disabled)</span>
+                        </label>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <div class="flex items-center gap-4">
+                <button @click="generateComparison()"
+                        :disabled="!canGenerate || generating"
+                        class="px-6 py-3 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
+                    <svg x-show="generating" class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-show="!generating">Compare Providers</span>
+                    <span x-show="generating">Generating...</span>
+                </button>
+
+                <span x-show="selectedProviders.length > 0" class="text-sm text-earth-500">
+                    <span x-text="selectedProviders.length"></span> provider(s) selected
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div x-show="error" x-cloak
+         class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span x-text="error"></span>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div x-show="results.length > 0" x-cloak class="space-y-4">
+        <h2 class="font-heading text-lg font-semibold text-earth-800">Comparison Results</h2>
+
+        <!-- Results Grid -->
+        <div class="grid gap-4" :class="results.length === 2 ? 'md:grid-cols-2' : results.length >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'">
+            <template x-for="result in results" :key="result.provider">
+                <div class="bg-white rounded-2xl shadow-sm border border-earth-100 overflow-hidden">
+                    <!-- Provider Header -->
+                    <div class="px-4 py-3 border-b border-earth-100 flex items-center justify-between"
+                         :style="`background-color: ${getProviderColor(result.provider, 'bg')}`">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-white"
+                                 :style="`color: ${getProviderColor(result.provider, 'primary')}`">
+                                <span x-text="getProviderName(result.provider).charAt(0)"></span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-earth-800" x-text="getProviderName(result.provider)"></h3>
+                            </div>
+                        </div>
+
+                        <!-- Status Badge -->
+                        <span :class="result.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                              class="px-2 py-1 rounded-full text-xs font-medium">
+                            <span x-text="result.success ? 'Success' : 'Error'"></span>
+                        </span>
+                    </div>
+
+                    <!-- Metrics Bar -->
+                    <div class="px-4 py-2 bg-earth-50 border-b border-earth-100 flex items-center gap-4 text-xs text-earth-600">
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="formatTime(result.metrics?.response_time_ms || 0)"></span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                            </svg>
+                            <span x-text="(result.metrics?.token_count || 0) + ' tokens'"></span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="'$' + (result.metrics?.estimated_cost || 0).toFixed(6)"></span>
+                        </div>
+                    </div>
+
+                    <!-- Response Content -->
+                    <div class="p-4">
+                        <div x-show="result.success" class="prose prose-sm max-w-none text-earth-700">
+                            <div x-text="result.response || result.output"></div>
+                        </div>
+                        <div x-show="!result.success" class="text-red-600 text-sm">
+                            <span x-text="result.error || 'An error occurred'"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Historical Metrics Section -->
+    <div class="bg-white rounded-2xl shadow-sm border border-earth-100 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-heading text-lg font-semibold text-earth-800">Performance History</h2>
+            <button @click="loadMetrics()" class="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                Refresh
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-earth-50 rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-earth-800" x-text="stats.total_comparisons || 0"></div>
+                <div class="text-sm text-earth-500">Total Comparisons</div>
+            </div>
+            <div class="bg-earth-50 rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-earth-800" x-text="formatTime(stats.avg_response_time || 0)"></div>
+                <div class="text-sm text-earth-500">Avg Response Time</div>
+            </div>
+            <div class="bg-earth-50 rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-earth-800" x-text="'$' + (stats.total_cost || 0).toFixed(4)"></div>
+                <div class="text-sm text-earth-500">Total Cost</div>
+            </div>
+            <div class="bg-earth-50 rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-earth-800" x-text="stats.providers_used || 0"></div>
+                <div class="text-sm text-earth-500">Providers Used</div>
+            </div>
+        </div>
+
+        <!-- Recent Metrics Table -->
+        <div x-show="metrics.length > 0" class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-earth-200">
+                        <th class="text-left py-2 px-3 font-medium text-earth-600">Provider</th>
+                        <th class="text-left py-2 px-3 font-medium text-earth-600">Response Time</th>
+                        <th class="text-left py-2 px-3 font-medium text-earth-600">Tokens</th>
+                        <th class="text-left py-2 px-3 font-medium text-earth-600">Cost</th>
+                        <th class="text-left py-2 px-3 font-medium text-earth-600">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="metric in metrics.slice(0, 10)" :key="metric.id">
+                        <tr class="border-b border-earth-100 hover:bg-earth-50">
+                            <td class="py-2 px-3">
+                                <span class="font-medium" x-text="getProviderName(metric.provider_id)"></span>
+                            </td>
+                            <td class="py-2 px-3" x-text="formatTime(metric.response_time_ms)"></td>
+                            <td class="py-2 px-3" x-text="(metric.input_tokens || 0) + ' / ' + (metric.output_tokens || 0)"></td>
+                            <td class="py-2 px-3" x-text="'$' + (metric.estimated_cost || 0).toFixed(6)"></td>
+                            <td class="py-2 px-3 text-earth-500" x-text="formatDate(metric.created_at)"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <div x-show="metrics.length === 0" class="text-center py-8 text-earth-500">
+            <svg class="w-12 h-12 mx-auto mb-3 text-earth-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <p>No comparison data yet. Run your first comparison above!</p>
+        </div>
+    </div>
+
+    <!-- Performance Chart -->
+    <div x-show="metrics.length > 0" class="bg-white rounded-2xl shadow-sm border border-earth-100 p-6">
+        <h2 class="font-heading text-lg font-semibold text-earth-800 mb-4">Response Time Comparison</h2>
+        <canvas id="responseTimeChart" height="200"></canvas>
+    </div>
+
+    <!-- Info Card -->
+    <div class="bg-blue-50 rounded-2xl border border-blue-200 p-6">
+        <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <h3 class="font-heading text-lg font-semibold text-blue-800">About Provider Comparison</h3>
+                <p class="text-sm text-blue-700 mt-1">
+                    Compare responses from different AI providers to find the best fit for your sermon content.
+                    Each comparison tracks response time, token usage, and estimated cost to help you make informed decisions.
+                </p>
+                <ul class="mt-2 text-sm text-blue-700 list-disc list-inside">
+                    <li>Response times may vary based on network conditions and provider load</li>
+                    <li>Cost estimates are approximations based on current pricing</li>
+                    <li>Enable providers in <a href="/settings/providers" class="underline">Provider Settings</a> to use them</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function providerComparison() {
+    return {
+        providers: [],
+        selectedProviders: [],
+        prompt: '',
+        generating: false,
+        error: null,
+        results: [],
+        metrics: [],
+        stats: {},
+        chart: null,
+
+        get canGenerate() {
+            return this.prompt.trim().length > 0 && this.selectedProviders.length > 0;
+        },
+
+        async loadProviders() {
+            try {
+                const response = await fetch('/api/providers');
+                const data = await response.json();
+                this.providers = data.providers;
+
+                // Pre-select enabled providers
+                this.selectedProviders = this.providers
+                    .filter(p => p.is_enabled)
+                    .map(p => p.provider_name)
+                    .slice(0, 2);
+
+                await this.loadMetrics();
+            } catch (error) {
+                console.error('Failed to load providers:', error);
+            }
+        },
+
+        toggleProvider(providerId) {
+            const index = this.selectedProviders.indexOf(providerId);
+            if (index === -1) {
+                this.selectedProviders.push(providerId);
+            } else {
+                this.selectedProviders.splice(index, 1);
+            }
+        },
+
+        async generateComparison() {
+            if (!this.canGenerate) return;
+
+            this.generating = true;
+            this.error = null;
+            this.results = [];
+
+            try {
+                const response = await fetch('/api/comparison/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        prompt: this.prompt,
+                        providers: this.selectedProviders
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Generation failed');
+                }
+
+                const data = await response.json();
+                this.results = data.results;
+
+                // Refresh metrics after generation
+                await this.loadMetrics();
+
+                window.showToast && window.showToast('Comparison complete!', 'success');
+            } catch (error) {
+                this.error = error.message || 'An error occurred';
+                window.showToast && window.showToast(this.error, 'error');
+            } finally {
+                this.generating = false;
+            }
+        },
+
+        async loadMetrics() {
+            try {
+                const response = await fetch('/api/comparison/metrics');
+                const data = await response.json();
+                this.metrics = data.metrics || [];
+                this.stats = data.stats || {};
+
+                // Update chart if we have data
+                this.$nextTick(() => this.updateChart());
+            } catch (error) {
+                console.error('Failed to load metrics:', error);
+            }
+        },
+
+        getProviderName(providerId) {
+            const provider = this.providers.find(p => p.provider_name === providerId);
+            return provider?.display_name || providerId;
+        },
+
+        getProviderColor(providerId, type) {
+            const provider = this.providers.find(p => p.provider_name === providerId);
+            if (type === 'bg') return provider?.color_bg || '#F3EFE8';
+            return provider?.color_primary || '#4A7C59';
+        },
+
+        formatTime(ms) {
+            if (ms < 1000) return ms + 'ms';
+            return (ms / 1000).toFixed(2) + 's';
+        },
+
+        formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        },
+
+        updateChart() {
+            const ctx = document.getElementById('responseTimeChart');
+            if (!ctx || this.metrics.length === 0) return;
+
+            // Group metrics by provider
+            const providerData = {};
+            this.metrics.slice(0, 20).reverse().forEach(m => {
+                if (!providerData[m.provider_id]) {
+                    providerData[m.provider_id] = [];
+                }
+                providerData[m.provider_id].push(m.response_time_ms);
+            });
+
+            // Build datasets
+            const datasets = [];
+            const colors = ['#D97706', '#10B981', '#3B82F6', '#EF4444'];
+            let colorIndex = 0;
+
+            for (const [providerId, times] of Object.entries(providerData)) {
+                datasets.push({
+                    label: this.getProviderName(providerId),
+                    data: times,
+                    borderColor: colors[colorIndex % colors.length],
+                    backgroundColor: colors[colorIndex % colors.length] + '20',
+                    tension: 0.3,
+                    fill: true
+                });
+                colorIndex++;
+            }
+
+            // Destroy existing chart
+            if (this.chart) {
+                this.chart.destroy();
+            }
+
+            // Create new chart
+            this.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: Math.max(...Object.values(providerData).map(a => a.length))}, (_, i) => i + 1),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Response Time (ms)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Comparison #'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    };
+}
+</script>
+{% endblock %}
