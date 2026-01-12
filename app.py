@@ -1938,6 +1938,123 @@ h1 { color: #666; }
         }), 200
 
     # ========================================
+    # VERSION CONTROL API
+    # ========================================
+
+    @app.route('/api/sermon/<int:sermon_id>/versions')
+    def api_sermon_versions(sermon_id):
+        """Get all versions for a sermon."""
+        from version_control import get_sermon_versions, SermonNotFoundError
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sermons WHERE id = ?", (sermon_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        # Get optional filters
+        section = request.args.get('section')
+        provider_id = request.args.get('provider_id')
+
+        try:
+            versions = get_sermon_versions(conn, sermon_id, section=section, provider_id=provider_id)
+            return jsonify({
+                'sermon_id': sermon_id,
+                'versions': versions,
+                'count': len(versions)
+            }), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/sermon/<int:sermon_id>/regenerate', methods=['POST'])
+    def api_sermon_regenerate(sermon_id):
+        """Regenerate a sermon section with a specific provider."""
+        from version_control import regenerate_section, SermonNotFoundError, ProviderNotFoundError
+        from providers.registry import ProviderRegistry
+        from providers.claude_cli import ClaudeCLIProvider
+
+        conn = get_db()
+        init_db(conn)
+
+        data = request.get_json() or {}
+        section = data.get('section', 'full')
+        provider_id = data.get('provider_id')
+
+        if not provider_id:
+            return jsonify({'error': 'provider_id is required'}), 400
+
+        # Create registry and register available providers
+        registry = ProviderRegistry(conn)
+
+        # Register Claude CLI provider
+        try:
+            claude_provider = ClaudeCLIProvider()
+            registry.register(claude_provider)
+        except Exception:
+            pass
+
+        # Try to register other providers if available
+        try:
+            from providers.openai import OpenAIProvider
+            import os
+            api_key = os.environ.get('OPENAI_API_KEY')
+            if api_key:
+                openai_provider = OpenAIProvider(api_key=api_key)
+                registry.register(openai_provider)
+        except Exception:
+            pass
+
+        try:
+            from providers.gemini import GeminiProvider
+            import os
+            api_key = os.environ.get('GOOGLE_API_KEY')
+            if api_key:
+                gemini_provider = GeminiProvider(api_key=api_key)
+                registry.register(gemini_provider)
+        except Exception:
+            pass
+
+        try:
+            result = regenerate_section(conn, registry, sermon_id, section, provider_id)
+            return jsonify(result), 200
+        except SermonNotFoundError:
+            return jsonify({'error': 'Sermon not found'}), 404
+        except ProviderNotFoundError as e:
+            return jsonify({'error': str(e), 'success': False}), 503
+        except Exception as e:
+            return jsonify({'error': str(e), 'success': False}), 500
+
+    @app.route('/api/sermon/<int:sermon_id>/compare')
+    def api_sermon_compare(sermon_id):
+        """Compare outputs between two providers."""
+        from version_control import compare_provider_outputs
+
+        conn = get_db()
+        init_db(conn)
+
+        # Check if sermon exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM sermons WHERE id = ?", (sermon_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Sermon not found'}), 404
+
+        provider1 = request.args.get('provider1')
+        provider2 = request.args.get('provider2')
+        section = request.args.get('section', 'full')
+
+        if not provider1 or not provider2:
+            return jsonify({'error': 'provider1 and provider2 query parameters are required'}), 400
+
+        try:
+            comparison = compare_provider_outputs(conn, sermon_id, provider1, provider2, section)
+            return jsonify(comparison), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    # ========================================
     # PASSAGE SUGGESTIONS API
     # ========================================
 

@@ -842,6 +842,14 @@ def generate_sermon_with_provider(params, registry, db_conn, provider_id=None, m
     # Also store in content_sources for tracking
     _store_content_source(db_conn, 'sermon', sermon_id, provider_id, result.model_id, params)
 
+    # Auto-save initial version for version tracking
+    try:
+        from version_control import save_sermon_version
+        save_sermon_version(db_conn, sermon_id, manuscript, provider_id, 'full')
+    except Exception:
+        # Version tracking is optional, don't fail generation if it fails
+        pass
+
     return {
         'id': sermon_id,
         'sermon_id': sermon_id,
