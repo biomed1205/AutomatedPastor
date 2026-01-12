@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Practice Timer - AutomatedPastor{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl lg:text-3xl font-bold text-earth-800">Practice Timer</h1>
+            <p class="mt-1 text-earth-500">Select a sermon to practice your delivery</p>
+        </div>
+    </div>
+
+    {% if sermons %}
+    <!-- Sermon List -->
+    <div class="grid gap-4">
+        {% for sermon in sermons %}
+        <a href="/sermon/{{ sermon.id }}/practice"
+           class="block bg-white rounded-2xl shadow-sm border border-earth-100 p-6 hover:shadow-md hover:border-primary-200 transition-all group">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:bg-green-200 transition-colors">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="font-heading text-lg font-semibold text-earth-800 truncate group-hover:text-primary-700 transition-colors">
+                                {{ sermon.title }}
+                            </h2>
+                            <p class="text-sm text-earth-500">{{ sermon.scripture }}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-3">
+                        {% if sermon.word_count %}
+                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-earth-100 text-earth-600 rounded-full text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            {{ sermon.word_count }} words
+                        </span>
+                        {% endif %}
+                        {% if sermon.estimated_minutes %}
+                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            ~{{ sermon.estimated_minutes|round|int }} min
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex-shrink-0 text-earth-400 group-hover:text-primary-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Tips Card -->
+    <div class="bg-green-50 rounded-2xl p-6 border border-green-100">
+        <h3 class="font-heading text-lg font-semibold text-green-900 mb-3">Practice Tips</h3>
+        <ul class="space-y-2 text-green-800">
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Aim for 120-150 words per minute for optimal delivery pace</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Practice out loud to identify tongue-twisters and awkward phrases</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Mark natural pause points in your manuscript</span>
+            </li>
+        </ul>
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-2xl shadow-sm border border-earth-100 p-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-earth-100 flex items-center justify-center">
+            <svg class="w-8 h-8 text-earth-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <h3 class="font-heading text-xl font-semibold text-earth-800 mb-2">No sermons ready for practice</h3>
+        <p class="text-earth-500 mb-6">Create a sermon with a manuscript to start practicing your delivery.</p>
+        <a href="/sermon/new"
+           class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Create a Sermon
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
