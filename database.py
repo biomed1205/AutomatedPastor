@@ -539,6 +539,67 @@ def init_db(conn):
         )
     """)
 
+    # Create provider_health table for health monitoring
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS provider_health (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider_id TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'unknown',
+            last_check TIMESTAMP,
+            last_success TIMESTAMP,
+            failure_count INTEGER DEFAULT 0,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create provider_error_log table for error tracking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS provider_error_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider_id TEXT NOT NULL,
+            error_message TEXT,
+            error_type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # =========================================================================
+    # Version Control Tables
+    # =========================================================================
+
+    # Create sermon_versions table for tracking provider-specific versions
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sermon_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL,
+            version_number INTEGER NOT NULL,
+            provider_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            section TEXT DEFAULT 'full',
+            word_count INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create index for efficient querying of versions
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_sermon_versions_sermon_id
+        ON sermon_versions(sermon_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_sermon_versions_provider
+        ON sermon_versions(provider_id)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_sermon_versions_section
+        ON sermon_versions(section)
+    """)
+
     # Seed default AI providers
     _seed_default_providers(cursor)
 

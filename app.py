@@ -2388,6 +2388,186 @@ h1 { color: #666; }
         }), 200
 
     # ========================================
+    # PROVIDER HEALTH API
+    # ========================================
+
+    @app.route('/api/providers/health')
+    def api_providers_health():
+        """API endpoint for getting health status of all providers."""
+        from providers.health import get_all_health_statuses
+
+        conn = get_db()
+        init_db(conn)
+
+        statuses = get_all_health_statuses(conn)
+
+        # Also get provider info for display
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT provider_name, display_name, is_enabled
+            FROM ai_providers
+        """)
+        providers = {row['provider_name']: {
+            'display_name': row['display_name'],
+            'is_enabled': bool(row['is_enabled'])
+        } for row in cursor.fetchall()}
+
+        # Merge health status with provider info
+        health = []
+        for status in statuses:
+            provider_info = providers.get(status['provider_id'], {})
+            health.append({
+                **status,
+                'display_name': provider_info.get('display_name', status['provider_id']),
+                'is_enabled': provider_info.get('is_enabled', False)
+            })
+
+        # Add providers without health records
+        health_provider_ids = {s['provider_id'] for s in statuses}
+        for provider_id, info in providers.items():
+            if provider_id not in health_provider_ids:
+                health.append({
+                    'provider_id': provider_id,
+                    'display_name': info['display_name'],
+                    'is_enabled': info['is_enabled'],
+                    'status': 'unknown',
+                    'last_check': None,
+                    'last_success': None,
+                    'failure_count': 0,
+                    'error_message': None
+                })
+
+        return jsonify({'health': health}), 200
+
+    @app.route('/api/providers/<provider_id>/health')
+    def api_provider_health(provider_id):
+        """API endpoint for getting health status of a specific provider."""
+        from providers.health import get_health_status, get_recent_errors
+
+        conn = get_db()
+        init_db(conn)
+
+        # Get current health status
+        status = get_health_status(conn, provider_id)
+        if not status:
+            # Check if provider exists
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT provider_name FROM ai_providers WHERE provider_name = ?",
+                (provider_id,)
+            )
+            if not cursor.fetchone():
+                return jsonify({'error': 'Provider not found'}), 404
+
+            # Provider exists but no health data yet
+            status = {
+                'provider_id': provider_id,
+                'status': 'unknown',
+                'last_check': None,
+                'last_success': None,
+                'failure_count': 0,
+                'error_message': None
+            }
+
+        # Get recent errors
+        errors = get_recent_errors(conn, provider_id, limit=5)
+
+        return jsonify({
+            'health': status,
+            'recent_errors': errors
+        }), 200
+
+    @app.route('/api/providers/<provider_id>/health-check', methods=['POST'])
+    def api_provider_health_check(provider_id):
+        """API endpoint to trigger a health check for a specific provider."""
+        from providers.health import check_provider_health, store_health_status
+        from providers.claude_cli import ClaudeCLIProvider
+        from providers.claude_api import ClaudeAPIProvider
+        from providers.encryption import KeyEncryption
+
+        conn = get_db()
+        init_db(conn)
+
+        # Get provider info
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT provider_name, api_key_encrypted
+            FROM ai_providers
+            WHERE provider_name = ?
+        """, (provider_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            return jsonify({'error': 'Provider not found'}), 404
+
+        provider = None
+
+        # Create provider instance based on type
+        if provider_id == 'claude_cli':
+            provider = ClaudeCLIProvider()
+        elif provider_id == 'claude_api':
+            if row['api_key_encrypted']:
+                try:
+                    encryption = KeyEncryption()
+                    api_key = encryption.decrypt(row['api_key_encrypted'])
+                    provider = ClaudeAPIProvider(api_key=api_key)
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to initialize provider: {str(e)}'
+                    }), 503
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'API key not configured'
+                }), 503
+        elif provider_id == 'openai':
+            # OpenAI provider check (basic)
+            if not row['api_key_encrypted']:
+                return jsonify({
+                    'success': False,
+                    'error': 'API key not configured'
+                }), 503
+
+            # For now, return a simple check (could add OpenAI SDK check)
+            return jsonify({
+                'success': True,
+                'status': 'unknown',
+                'message': 'OpenAI health check not fully implemented'
+            }), 200
+        elif provider_id == 'gemini':
+            # Gemini provider check (basic)
+            if not row['api_key_encrypted']:
+                return jsonify({
+                    'success': False,
+                    'error': 'API key not configured'
+                }), 503
+
+            return jsonify({
+                'success': True,
+                'status': 'unknown',
+                'message': 'Gemini health check not fully implemented'
+            }), 200
+        else:
+            return jsonify({'error': 'Unknown provider type'}), 400
+
+        if provider:
+            # Perform health check
+            status = check_provider_health(provider)
+            store_health_status(conn, status)
+
+            return jsonify({
+                'success': True,
+                'provider_id': status.provider_id,
+                'status': status.status.value,
+                'last_check': status.last_check.isoformat() if status.last_check else None,
+                'response_time_ms': status.response_time_ms,
+                'error_message': status.error_message
+            }), 200
+
+        return jsonify({'error': 'Could not create provider instance'}), 503
+
+    # ========================================
     # PROVIDER COMPARISON API
     # ========================================
 

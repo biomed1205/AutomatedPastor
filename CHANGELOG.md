@@ -2,6 +2,124 @@
 
 All notable changes to AutomatedPastor will be documented in this file.
 
+## [Multi-AI Provider Support] - 2026-01-11 (COMPLETE)
+
+### Added - Phase 7: Polish & Integration
+- **Provider Health Monitoring**: Track health status of all AI providers
+  - `provider_health` table for status tracking
+  - `provider_error_log` table for error history
+  - Health check API endpoints
+  - Failure count tracking with automatic reset on success
+- **Fallback Mechanism**: Automatic fallback when providers fail
+  - `generate_with_fallback()` - tries providers in order
+  - `get_fallback_chain()` - gets ordered fallback list
+  - `get_fallback_chain_by_health()` - health-aware ordering
+  - Logging of all fallback attempts
+- **Health API Endpoints**:
+  - `GET /api/providers/health` - All provider health statuses
+  - `GET /api/providers/{id}/health` - Specific provider health
+  - `POST /api/providers/{id}/health-check` - Trigger health check
+
+### Added - Phase 6: Provider Settings UI
+- **Provider Management UI**: Settings page for configuring AI providers
+  - Enable/disable providers
+  - Set default provider
+  - Configure API keys (encrypted storage)
+  - Test provider connections
+  - Select default models
+
+### Added - Phase 5: Enhanced Research
+- **ResearchAggregator**: Multi-provider research with aggregation
+  - Parallel research across multiple providers
+  - Result caching for efficiency
+  - Semantic deduplication of findings
+  - Provider source tracking
+- **Research API Endpoints**:
+  - `POST /api/research/multi-provider` - Multi-provider research
+
+### Added - Phase 4: Provider Comparison
+- **Provider Comparison Module**: Track and compare provider performance
+  - Response time tracking
+  - Token usage statistics
+  - Cost estimation per provider
+  - Aggregated statistics
+- **Comparison API Endpoints**:
+  - `POST /api/comparison/generate` - Generate and compare
+  - `GET /api/comparison/stats` - Aggregated statistics
+  - `GET /api/comparison/cost-breakdown` - Cost by provider
+
+### Added - Phase 3: Multi-Source Generation
+- **Multi-Provider Sermon Generation**: Generate with specific providers
+  - `generate_sermon_with_provider()` - Single provider generation
+  - `generate_sermon_multi_provider()` - Parallel multi-provider
+  - Provider ID stored with each sermon
+  - Content source tracking
+- **Content Storage Tables**:
+  - `content_sources` - Track which AI generated what
+  - `generation_outputs` - Multiple outputs per sermon
+
+### Added - Phase 2: Gemini Provider
+- **Google Gemini Integration**: Full AI provider implementation
+  - GeminiProvider class with API integration
+  - Model selection (gemini-pro, gemini-pro-vision)
+  - Streaming support
+  - Safety settings configuration
+
+### Added - Phase 1: Core Infrastructure
+- **Provider Base Classes**: AIProvider abstract base class
+  - ProviderStatus enum
+  - ProviderModel dataclass
+  - ProviderResult dataclass
+- **Provider Registry**: Central management of providers
+  - Register/unregister providers
+  - Get enabled/default providers
+  - Run prompts on multiple providers in parallel
+- **Claude CLI Provider**: CLI-based Claude integration
+- **Claude API Provider**: Direct API-based Claude integration
+- **OpenAI Provider**: OpenAI API integration
+- **Encryption Module**: Secure API key storage
+  - AES-256 encryption with Fernet
+  - Per-installation encryption keys
+
+### New API Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/providers` | GET | List all AI providers |
+| `/api/providers/{id}` | GET | Get provider details |
+| `/api/providers/{id}` | PUT | Update provider config |
+| `/api/providers/{id}/models` | GET | Get available models |
+| `/api/providers/{id}/test` | POST | Test provider connection |
+| `/api/providers/health` | GET | All provider health statuses |
+| `/api/providers/{id}/health` | GET | Provider health details |
+| `/api/providers/{id}/health-check` | POST | Trigger health check |
+| `/api/research/multi-provider` | POST | Multi-provider research |
+| `/api/comparison/generate` | POST | Generate with comparison |
+| `/api/comparison/stats` | GET | Comparison statistics |
+
+### Database Schema Changes
+- **New Tables**:
+  - `ai_providers` - Provider configuration
+  - `content_sources` - Content source tracking
+  - `research_items` - Research storage
+  - `content_versions` - Version history
+  - `generation_outputs` - Multiple AI outputs
+  - `content_comments` - Inline commenting
+  - `revision_requests` - Revision tracking
+  - `provider_metrics` - Performance metrics
+  - `provider_health` - Health monitoring
+  - `provider_error_log` - Error tracking
+  - `sermon_versions` - Provider-specific versions
+- **Modified Tables**:
+  - `sermons` - Added `provider_id` and `status` columns
+
+### Breaking Changes
+- None - fully backwards compatible
+
+### Migration Notes
+- Run `python -c "from database import init_db, get_db; conn = get_db(); init_db(conn)"` to create new tables
+- Existing sermons will have `provider_id = NULL` (backwards compatible)
+- Default provider (claude_cli) is auto-enabled on fresh installs
+
 ## [Phase 3] - 2026-01-11 (COMPLETE)
 
 ### Added
