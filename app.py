@@ -131,7 +131,7 @@ def create_app(config=None, testing=False):
         # Check if new templates exist
         if os.path.exists(os.path.join(template_folder, 'pages', 'dashboard.html')):
             return render_template('pages/dashboard.html',
-                recent_sermons=recent_sermons,
+                sermons=recent_sermons,
                 stats=stats,
                 total_sermons=total_sermons), 200
 
@@ -1617,7 +1617,19 @@ h1 { color: #666; }
     def settings_reviewers():
         """Reviewer panel settings page."""
         if os.path.exists(os.path.join(template_folder, 'pages', 'settings', 'reviewers.html')):
-            return render_template('pages/settings/reviewers.html', reviewers=[]), 200
+            import json as json_module
+            conn = get_db()
+            init_db(conn)
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'reviewer_panel'")
+            row = cursor.fetchone()
+            reviewers = []
+            if row and row['value']:
+                try:
+                    reviewers = json_module.loads(row['value'])
+                except (json_module.JSONDecodeError, TypeError):
+                    reviewers = []
+            return render_template('pages/settings/reviewers.html', reviewers=reviewers), 200
         return jsonify({'error': 'Template not found'}), 404
 
     @app.route('/settings/providers')
@@ -1634,11 +1646,56 @@ h1 { color: #666; }
         # In production, save to database
         return jsonify({'success': True}), 200
 
+    @app.route('/api/settings/reviewers', methods=['GET'])
+    def api_get_reviewers():
+        """API endpoint for getting saved reviewer settings."""
+        import json as json_module
+        conn = get_db()
+        init_db(conn)
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'reviewer_panel'")
+        row = cursor.fetchone()
+        reviewers = []
+        if row and row['value']:
+            try:
+                reviewers = json_module.loads(row['value'])
+            except (json_module.JSONDecodeError, TypeError):
+                reviewers = []
+        return jsonify({'reviewers': reviewers}), 200
+
     @app.route('/api/settings/reviewers', methods=['POST'])
     def api_save_reviewers():
         """API endpoint for saving reviewer settings."""
+        import json as json_module
+        from datetime import datetime
+
         data = request.get_json() or {}
-        # In production, save to database
+        reviewers = data.get('reviewers', [])
+
+        conn = get_db()
+        init_db(conn)
+        cursor = conn.cursor()
+
+        # Upsert the reviewer_panel setting
+        now = datetime.now().isoformat()
+        reviewers_json = json_module.dumps(reviewers)
+
+        # Check if setting exists
+        cursor.execute("SELECT id FROM settings WHERE key = 'reviewer_panel'")
+        existing = cursor.fetchone()
+
+        if existing:
+            cursor.execute(
+                "UPDATE settings SET value = ?, updated_at = ? WHERE key = 'reviewer_panel'",
+                (reviewers_json, now)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO settings (key, value, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                ('reviewer_panel', reviewers_json, now, now)
+            )
+
+        conn.commit()
         return jsonify({'success': True}), 200
 
     # ========================================
@@ -1647,10 +1704,16 @@ h1 { color: #666; }
 
     @app.route('/api/sermon/generate', methods=['POST'])
     def api_generate_sermon():
-        """API endpoint for generating a sermon with streaming progress."""
+        """API endpoint for generating a sermon with streaming progress.
+
+        Accepts optional provider_id to select which AI provider to use.
+        If no provider_id specified, uses the default provider.
+        """
         import json as json_module
         import time
-        from sermon_generator import generate_sermon_simple
+        from sermon_generator import generate_sermon_simple, generate_sermon_with_provider
+        from providers.registry import ProviderRegistry
+        from providers.claude_cli import ClaudeCLIProvider
 
         data = request.get_json() or {}
         scripture = data.get('scripture', '').strip()
@@ -1659,6 +1722,7 @@ h1 { color: #666; }
         main_point = data.get('main_point', '').strip()
         liturgical_season = data.get('liturgical_season', '').strip()
         special_occasion = data.get('special_occasion', '').strip()
+        provider_id = data.get('provider_id', '').strip() or None
 
         if not scripture:
             return jsonify({'error': 'Scripture is required'}), 400
@@ -1668,13 +1732,6 @@ h1 { color: #666; }
         conn = get_db()
         init_db(conn)
 
-        # Get appropriate bridge (API or CLI based on environment)
-        try:
-            from api_bridge import get_bridge
-            bridge = get_bridge()
-        except Exception as bridge_error:
-            return jsonify({'error': f'Generation not available: {str(bridge_error)}'}), 503
-
         params = {
             'scripture': scripture,
             'title': title or f'Sermon on {scripture}',
@@ -1683,6 +1740,26 @@ h1 { color: #666; }
             'liturgical_season': liturgical_season,
             'special_occasion': special_occasion
         }
+
+        # Determine generation method: use registry if provider_id specified,
+        # otherwise fall back to legacy bridge method
+        use_registry = provider_id is not None
+
+        if use_registry:
+            # Setup registry with providers
+            registry = ProviderRegistry(conn)
+            # Register claude_cli provider (always available)
+            cli_provider = ClaudeCLIProvider(command='claude')
+            registry.register(cli_provider)
+
+            # TODO: Register other providers based on what's enabled in DB
+        else:
+            # Get appropriate bridge (API or CLI based on environment)
+            try:
+                from api_bridge import get_bridge
+                bridge = get_bridge()
+            except Exception as bridge_error:
+                return jsonify({'error': f'Generation not available: {str(bridge_error)}'}), 503
 
         def generate_stream():
             """Generator for streaming progress updates."""
@@ -1705,8 +1782,14 @@ h1 { color: #666; }
                 yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 55})}\n\n"
                 yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 65})}\n\n"
 
-                # Perform actual generation (uses conn/bridge/params from closure)
-                result = generate_sermon_simple(params, bridge, conn)
+                # Perform actual generation
+                if use_registry:
+                    result = generate_sermon_with_provider(
+                        params, registry, conn, provider_id=provider_id
+                    )
+                else:
+                    result = generate_sermon_simple(params, bridge, conn)
+
                 yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 80})}\n\n"
 
                 # Stage 4: Review (80-100%)
@@ -1715,8 +1798,15 @@ h1 { color: #666; }
                 yield f"data: {json_module.dumps({'stage': 'review', 'progress': 95})}\n\n"
                 time.sleep(0.2)
 
-                # Complete
-                yield f"data: {json_module.dumps({'stage': 'review', 'progress': 100, 'sermon_id': result.get('sermon_id')})}\n\n"
+                # Complete - include provider_id in response
+                complete_data = {
+                    'stage': 'review',
+                    'progress': 100,
+                    'sermon_id': result.get('sermon_id')
+                }
+                if result.get('provider_id'):
+                    complete_data['provider_id'] = result.get('provider_id')
+                yield f"data: {json_module.dumps(complete_data)}\n\n"
 
             except Exception as e:
                 yield f"data: {json_module.dumps({'error': str(e)})}\n\n"
@@ -1991,7 +2081,32 @@ h1 { color: #666; }
 
         return jsonify({'error': 'Series not found'}), 404
 
-    # Initialize SocketIO for real-time features
+    # ========================================
+    # PROVIDER MANAGEMENT API
+    # ========================================
+
+    @app.route('/api/providers')
+    def api_list_providers():
+        """API endpoint for listing all AI providers."""
+        from providers.encryption import KeyEncryption
+
+        conn = get_db()
+        init_db(conn)
+
+        cursor = conn.cursor()
+
+        # Check if filtering by enabled status
+        enabled_only = request.args.get('enabled', '').lower() == 'true'
+
+        if enabled_only:
+            cursor.execute("""
+                SELECT provider_name, display_name, api_key_encrypted,
+                       default_model, is_enabled, is_default,
+                       color_primary, color_bg, config_json
+                FROM ai_providers
+                WHERE is_enabled = 1
+                ORDER BY is_default DESC, display_name ASC
+            """)
         else:
             cursor.execute("""
                 SELECT provider_name, display_name, api_key_encrypted,
@@ -2271,6 +2386,346 @@ h1 { color: #666; }
             'provider_id': provider_id,
             'error': 'Unknown provider type'
         }), 200
+
+    # ========================================
+    # PROVIDER COMPARISON API
+    # ========================================
+
+    @app.route('/api/comparison/generate', methods=['POST'])
+    def api_comparison_generate():
+        """API endpoint for generating comparison across multiple providers."""
+        import time
+        from providers.comparison import (
+            store_comparison_result, estimate_cost, hash_prompt
+        )
+
+        conn = get_db()
+        init_db(conn)
+
+        data = request.get_json() or {}
+        prompt = data.get('prompt', '').strip()
+        providers = data.get('providers', [])
+
+        # Validate input
+        if not prompt:
+            return jsonify({'error': 'Prompt is required'}), 400
+        if not providers:
+            return jsonify({'error': 'At least one provider must be selected'}), 400
+
+        results = []
+
+        for provider_id in providers:
+            result = {
+                'provider': provider_id,
+                'success': False,
+                'response': '',
+                'metrics': {
+                    'response_time_ms': 0,
+                    'token_count': 0,
+                    'tokens': {'input': 0, 'output': 0},
+                    'estimated_cost': 0
+                }
+            }
+
+            # Check if provider exists
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT provider_name, display_name, api_key_encrypted
+                FROM ai_providers WHERE provider_name = ?
+            """, (provider_id,))
+            provider_row = cursor.fetchone()
+
+            if not provider_row:
+                result['error'] = f'Provider not found: {provider_id}'
+                results.append(result)
+                continue
+
+            try:
+                start_time = time.time()
+
+                # Execute based on provider type
+                if provider_id == 'claude_cli':
+                    from providers.claude_cli import ClaudeCLIProvider
+                    provider = ClaudeCLIProvider()
+
+                    if not provider.is_available():
+                        result['error'] = 'Claude CLI not available'
+                        results.append(result)
+                        continue
+
+                    provider_result = provider.run(prompt)
+                    response_time_ms = int((time.time() - start_time) * 1000)
+
+                    result['success'] = provider_result.success
+                    result['response'] = provider_result.output
+                    result['output'] = provider_result.output
+
+                    input_tokens = provider_result.tokens_used or 50
+                    output_tokens = len(provider_result.output.split()) * 2  # Rough estimate
+                    cost = estimate_cost(provider_id, input_tokens, output_tokens)
+
+                    result['metrics'] = {
+                        'response_time_ms': response_time_ms,
+                        'token_count': input_tokens + output_tokens,
+                        'tokens': {'input': input_tokens, 'output': output_tokens},
+                        'estimated_cost': cost
+                    }
+
+                    # Store metrics
+                    store_comparison_result(
+                        conn,
+                        provider_id=provider_id,
+                        prompt=prompt,
+                        response_time_ms=response_time_ms,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        estimated_cost=cost
+                    )
+
+                elif provider_id == 'claude_api':
+                    from providers.claude_api import ClaudeAPIProvider
+                    from providers.encryption import KeyEncryption
+
+                    if not provider_row['api_key_encrypted']:
+                        result['error'] = 'API key not configured'
+                        results.append(result)
+                        continue
+
+                    encryption = KeyEncryption()
+                    api_key = encryption.decrypt(provider_row['api_key_encrypted'])
+                    provider = ClaudeAPIProvider(api_key=api_key)
+
+                    if not provider.is_available():
+                        result['error'] = 'Claude API not available'
+                        results.append(result)
+                        continue
+
+                    provider_result = provider.run(prompt)
+                    response_time_ms = int((time.time() - start_time) * 1000)
+
+                    result['success'] = provider_result.success
+                    result['response'] = provider_result.output
+                    result['output'] = provider_result.output
+
+                    input_tokens = provider_result.tokens_used or 50
+                    output_tokens = len(provider_result.output.split()) * 2
+                    cost = estimate_cost(provider_id, input_tokens, output_tokens)
+
+                    result['metrics'] = {
+                        'response_time_ms': response_time_ms,
+                        'token_count': input_tokens + output_tokens,
+                        'tokens': {'input': input_tokens, 'output': output_tokens},
+                        'estimated_cost': cost
+                    }
+
+                    store_comparison_result(
+                        conn,
+                        provider_id=provider_id,
+                        prompt=prompt,
+                        response_time_ms=response_time_ms,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        estimated_cost=cost
+                    )
+
+                else:
+                    # For other providers (openai, gemini), return simulated result
+                    # In production, these would use actual provider implementations
+                    response_time_ms = int((time.time() - start_time) * 1000) + 100
+                    result['success'] = True
+                    result['response'] = f'[Simulated response from {provider_id}] Response to: {prompt[:50]}...'
+                    result['output'] = result['response']
+
+                    input_tokens = 50
+                    output_tokens = 100
+                    cost = estimate_cost(provider_id, input_tokens, output_tokens)
+
+                    result['metrics'] = {
+                        'response_time_ms': response_time_ms,
+                        'token_count': input_tokens + output_tokens,
+                        'tokens': {'input': input_tokens, 'output': output_tokens},
+                        'estimated_cost': cost
+                    }
+
+                    store_comparison_result(
+                        conn,
+                        provider_id=provider_id,
+                        prompt=prompt,
+                        response_time_ms=response_time_ms,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        estimated_cost=cost
+                    )
+
+            except Exception as e:
+                result['error'] = str(e)
+                result['success'] = False
+
+            results.append(result)
+
+        return jsonify({'results': results}), 200
+
+    @app.route('/api/comparison/metrics')
+    def api_comparison_metrics():
+        """API endpoint for getting historical comparison metrics."""
+        from providers.comparison import get_all_metrics, get_aggregated_stats
+
+        conn = get_db()
+        init_db(conn)
+
+        provider_id = request.args.get('provider_id')
+        limit = request.args.get('limit', 100, type=int)
+
+        metrics = get_all_metrics(conn, provider_id=provider_id, limit=limit)
+        stats = get_aggregated_stats(conn)
+
+        return jsonify({
+            'metrics': metrics,
+            'stats': stats
+        }), 200
+
+    @app.route('/settings/comparison')
+    def settings_comparison():
+        """Provider comparison page."""
+        if os.path.exists(os.path.join(template_folder, 'pages', 'settings', 'comparison.html')):
+            return render_template('pages/settings/comparison.html'), 200
+        return jsonify({'error': 'Template not found'}), 404
+
+    # ========================================
+    # MULTI-PROVIDER RESEARCH API
+    # ========================================
+
+    @app.route('/api/research/multi-provider', methods=['POST'])
+    def api_multi_provider_research():
+        """API endpoint for executing research across multiple AI providers.
+
+        Queries multiple providers in parallel and aggregates the results
+        with deduplication and provider source tracking.
+
+        Request body:
+            {
+                "topic": "Research topic (required)",
+                "providers": ["provider_id1", "provider_id2"] (optional),
+                "research_type": "general|biblical_context|illustrations|theological" (optional),
+                "context": {"key": "value"} (optional)
+            }
+
+        Returns:
+            {
+                "results": [...],
+                "provider_sources": {...},
+                "errors": [...],
+                "successful_count": N,
+                "failed_count": N
+            }
+        """
+        from research_aggregator import ResearchAggregator
+        from providers.registry import ProviderRegistry
+
+        conn = get_db()
+        init_db(conn)
+
+        data = request.get_json() or {}
+        topic = data.get('topic', '').strip()
+        provider_ids = data.get('providers', [])
+        research_type = data.get('research_type', 'general')
+        context = data.get('context', {})
+
+        # Validate required fields
+        if not topic:
+            return jsonify({'error': 'Topic is required'}), 400
+
+        # Create registry and aggregator
+        registry = ProviderRegistry(conn)
+
+        # Register available providers
+        try:
+            from providers.claude_cli import ClaudeCLIProvider
+            claude_cli = ClaudeCLIProvider()
+            registry.register(claude_cli)
+        except Exception:
+            pass
+
+        try:
+            from providers.claude_api import ClaudeAPIProvider
+            from providers.encryption import KeyEncryption
+
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT api_key_encrypted FROM ai_providers WHERE provider_name = 'claude_api'"
+            )
+            row = cursor.fetchone()
+            if row and row['api_key_encrypted']:
+                encryption = KeyEncryption()
+                api_key = encryption.decrypt(row['api_key_encrypted'])
+                claude_api = ClaudeAPIProvider(api_key=api_key)
+                registry.register(claude_api)
+        except Exception:
+            pass
+
+        try:
+            from providers.openai_api import OpenAIProvider
+            from providers.encryption import KeyEncryption
+
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT api_key_encrypted FROM ai_providers WHERE provider_name = 'openai'"
+            )
+            row = cursor.fetchone()
+            if row and row['api_key_encrypted']:
+                encryption = KeyEncryption()
+                api_key = encryption.decrypt(row['api_key_encrypted'])
+                openai_provider = OpenAIProvider(api_key=api_key)
+                registry.register(openai_provider)
+        except Exception:
+            pass
+
+        try:
+            from providers.gemini_api import GeminiProvider
+            from providers.encryption import KeyEncryption
+
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT api_key_encrypted FROM ai_providers WHERE provider_name = 'gemini'"
+            )
+            row = cursor.fetchone()
+            if row and row['api_key_encrypted']:
+                encryption = KeyEncryption()
+                api_key = encryption.decrypt(row['api_key_encrypted'])
+                gemini_provider = GeminiProvider(api_key=api_key)
+                registry.register(gemini_provider)
+        except Exception:
+            pass
+
+        aggregator = ResearchAggregator(registry)
+
+        # Check if we have any providers
+        available_providers = registry.list_providers()
+        if not available_providers:
+            return jsonify({
+                'error': 'No AI providers are available. Configure at least one provider.',
+                'results': [],
+                'provider_sources': {}
+            }), 503
+
+        # Execute research
+        if provider_ids:
+            # Use specific providers
+            results = aggregator.research_with_providers(
+                topic=topic,
+                provider_ids=provider_ids,
+                research_type=research_type,
+                context=context
+            )
+        else:
+            # Use all enabled providers
+            results = aggregator.research_all_providers(
+                topic=topic,
+                research_type=research_type,
+                context=context
+            )
+
+        return jsonify(results), 200
 
     # Initialize SocketIO for real-time features
     global socketio

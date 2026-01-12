@@ -127,7 +127,9 @@ def init_db(conn):
             series_week INTEGER,
             confirmed_preached BOOLEAN DEFAULT FALSE,
             post_sermon_notes TEXT,
-            service_times TEXT
+            service_times TEXT,
+            provider_id TEXT,
+            status TEXT
         )
     """)
 
@@ -512,6 +514,31 @@ def init_db(conn):
         )
     """)
 
+    # Create settings table for key-value storage (reviewer panel, preferences, etc.)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT UNIQUE NOT NULL,
+            value TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create provider_metrics table for tracking comparison metrics
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS provider_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider_id TEXT NOT NULL,
+            prompt_hash TEXT,
+            response_time_ms INTEGER,
+            input_tokens INTEGER,
+            output_tokens INTEGER,
+            estimated_cost REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Seed default AI providers
     _seed_default_providers(cursor)
 
@@ -588,3 +615,36 @@ def _seed_default_providers(cursor):
             provider['color_bg'],
             provider['config_json']
         ))
+
+
+def migrate_add_provider_id(conn):
+    """Migration to add provider_id column to sermons table.
+
+    This migration is idempotent - it can be run multiple times safely.
+    It adds the provider_id column if it doesn't already exist.
+
+    Args:
+        conn: sqlite3.Connection to the database.
+    """
+    cursor = conn.cursor()
+
+    # Check if column already exists
+    cursor.execute("PRAGMA table_info(sermons)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if 'provider_id' not in columns:
+        cursor.execute("ALTER TABLE sermons ADD COLUMN provider_id TEXT")
+        conn.commit()
+
+    if 'status' not in columns:
+        cursor.execute("ALTER TABLE sermons ADD COLUMN status TEXT")
+        conn.commit()
+
+
+def run_migrations(conn):
+    """Run all database migrations.
+
+    Args:
+        conn: sqlite3.Connection to the database.
+    """
+    migrate_add_provider_id(conn)

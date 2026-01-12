@@ -30,6 +30,16 @@ class GenerationTimeoutError(Exception):
     pass
 
 
+class ProviderNotFoundError(Exception):
+    """Raised when specified provider is not found in registry."""
+    pass
+
+
+class NoDefaultProviderError(Exception):
+    """Raised when no default provider is available."""
+    pass
+
+
 class SermonGenerator:
     """Generates sermons using CLI bridge.
 
@@ -716,3 +726,287 @@ Illustration Ideas:
         'estimated_time': estimated_time,
         'status': 'completed'
     }
+
+
+# =============================================================================
+# Multi-Source Generation Functions (Provider-based)
+# =============================================================================
+
+def generate_sermon_with_provider(params, registry, db_conn, provider_id=None, model=None):
+    """Generate a sermon using a specific AI provider from the registry.
+
+    Args:
+        params: Dictionary with sermon parameters:
+            - scripture (required): Scripture reference
+            - title (optional): Sermon title
+            - theme (optional): Main theme
+            - main_point (optional): Central message
+            - notes (optional): Reference notes
+            - liturgical_season (optional): Liturgical season
+            - special_occasion (optional): Special occasion
+        registry: ProviderRegistry instance with registered providers.
+        db_conn: Database connection.
+        provider_id: Optional provider ID. If None, uses default provider.
+        model: Optional model ID for the provider.
+
+    Returns:
+        dict: Result with sermon_id, manuscript, provider_id, etc.
+
+    Raises:
+        ProviderNotFoundError: If specified provider doesn't exist.
+        NoDefaultProviderError: If no default provider when none specified.
+        InvalidParamsError: If parameters are invalid.
+    """
+    from database import init_db
+
+    # Ensure database is initialized
+    init_db(db_conn)
+
+    # Validate parameters
+    if not params:
+        raise InvalidParamsError("Parameters cannot be empty")
+
+    if 'scripture' not in params or not params['scripture']:
+        raise InvalidParamsError("Scripture is required")
+
+    start_time = datetime.now()
+
+    # Get the provider
+    if provider_id:
+        provider = registry.get_provider(provider_id)
+        if not provider:
+            raise ProviderNotFoundError(f"Provider not found: {provider_id}")
+    else:
+        provider = registry.get_default_provider()
+        if not provider:
+            raise NoDefaultProviderError("No default provider available")
+        provider_id = provider.provider_id
+
+    # Build the prompt
+    prompt = build_sermon_prompt(params)
+
+    # Run generation through the provider
+    result = provider.run(prompt, model)
+
+    duration = (datetime.now() - start_time).total_seconds()
+
+    if not result.success:
+        return {
+            'success': False,
+            'error': result.error or "Generation failed",
+            'provider_id': provider_id,
+            'model_id': result.model_id,
+            'duration': duration
+        }
+
+    # Parse the output
+    parsed = parse_sermon_output(result.output)
+
+    # Get values from params and result
+    title = params.get('title', parsed.get('title', 'Untitled Sermon'))
+    scripture = params.get('scripture', '')
+    theme = params.get('theme', '')
+    main_point = params.get('main_point', '')
+    manuscript = parsed.get('manuscript', '')
+    outline = parsed.get('outline', '')
+    word_count = parsed.get('word_count', 0)
+    estimated_minutes = parsed.get('estimated_minutes', 0)
+    liturgical_season = params.get('liturgical_season', '')
+    special_occasion = params.get('special_occasion', '')
+
+    # Store research data as JSON
+    research_data = json.dumps({
+        'prompt_params': params,
+        'raw_output': manuscript[:500] if manuscript else '',
+        'provider_id': provider_id,
+        'model_id': result.model_id
+    })
+
+    # Save to database with provider_id
+    cursor = db_conn.cursor()
+    cursor.execute("""
+        INSERT INTO sermons (
+            title, scripture, theme, main_point, manuscript, outline,
+            word_count, estimated_minutes, liturgical_season, special_occasion,
+            research_data, provider_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        title, scripture, theme, main_point, manuscript, outline,
+        word_count, estimated_minutes, liturgical_season, special_occasion,
+        research_data, provider_id
+    ))
+    db_conn.commit()
+
+    sermon_id = cursor.lastrowid
+
+    # Also store in content_sources for tracking
+    _store_content_source(db_conn, 'sermon', sermon_id, provider_id, result.model_id, params)
+
+    return {
+        'id': sermon_id,
+        'sermon_id': sermon_id,
+        'title': title,
+        'manuscript': manuscript,
+        'outline': outline,
+        'word_count': word_count,
+        'estimated_minutes': estimated_minutes,
+        'provider_id': provider_id,
+        'model_id': result.model_id,
+        'duration': duration,
+        'success': True
+    }
+
+
+def generate_sermon_multi_provider(params, registry, db_conn, provider_ids=None):
+    """Generate sermons using multiple providers in parallel for comparison.
+
+    Args:
+        params: Dictionary with sermon parameters.
+        registry: ProviderRegistry instance.
+        db_conn: Database connection.
+        provider_ids: List of provider IDs to use. If None, uses all enabled.
+
+    Returns:
+        list: List of generation results, one per provider.
+    """
+    from database import init_db
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    init_db(db_conn)
+
+    # Validate parameters
+    if not params:
+        raise InvalidParamsError("Parameters cannot be empty")
+
+    if 'scripture' not in params or not params['scripture']:
+        raise InvalidParamsError("Scripture is required")
+
+    # Determine which providers to use
+    if provider_ids is None:
+        enabled = registry.get_enabled_providers()
+        provider_ids = [p.provider_id for p in enabled]
+
+    if not provider_ids:
+        raise NoDefaultProviderError("No providers available")
+
+    results = []
+
+    # Generate sermon for each provider
+    def run_provider(pid):
+        try:
+            return generate_sermon_with_provider(
+                params, registry, db_conn, provider_id=pid
+            )
+        except ProviderNotFoundError:
+            return {
+                'provider_id': pid,
+                'success': False,
+                'error': f'Provider not found: {pid}'
+            }
+        except Exception as e:
+            return {
+                'provider_id': pid,
+                'success': False,
+                'error': str(e)
+            }
+
+    # Run in parallel
+    with ThreadPoolExecutor(max_workers=min(len(provider_ids), 5)) as executor:
+        futures = {executor.submit(run_provider, pid): pid for pid in provider_ids}
+
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                results.append(result)
+
+                # Store in generation_outputs for comparison
+                if result.get('sermon_id'):
+                    _store_generation_output(
+                        db_conn,
+                        result['sermon_id'],
+                        'manuscript',
+                        result.get('manuscript', ''),
+                        result.get('provider_id'),
+                        result.get('model_id')
+                    )
+            except Exception as e:
+                pid = futures[future]
+                results.append({
+                    'provider_id': pid,
+                    'success': False,
+                    'error': str(e)
+                })
+
+    return results
+
+
+def _store_content_source(db_conn, content_type, content_id, provider_id, model_id, params):
+    """Store content source tracking info.
+
+    Args:
+        db_conn: Database connection.
+        content_type: Type of content (e.g., 'sermon').
+        content_id: ID of the content.
+        provider_id: Provider that generated the content.
+        model_id: Model used for generation.
+        params: Generation parameters.
+    """
+    cursor = db_conn.cursor()
+
+    # Get provider database ID
+    cursor.execute(
+        "SELECT id FROM ai_providers WHERE provider_name = ?",
+        (provider_id,)
+    )
+    row = cursor.fetchone()
+    provider_db_id = row[0] if row else None
+
+    if provider_db_id:
+        cursor.execute("""
+            INSERT INTO content_sources (
+                content_type, content_id, provider_id, model_id, generation_params
+            ) VALUES (?, ?, ?, ?, ?)
+        """, (
+            content_type, content_id, provider_db_id, model_id, json.dumps(params)
+        ))
+        db_conn.commit()
+
+
+def _store_generation_output(db_conn, sermon_id, output_type, content, provider_id, model_id):
+    """Store generation output for comparison.
+
+    Args:
+        db_conn: Database connection.
+        sermon_id: Sermon ID.
+        output_type: Type of output (e.g., 'manuscript').
+        content: The generated content.
+        provider_id: Provider that generated it.
+        model_id: Model used.
+    """
+    cursor = db_conn.cursor()
+
+    # Get the current max index for this sermon/output_type
+    cursor.execute(
+        "SELECT COALESCE(MAX(output_index), -1) FROM generation_outputs WHERE sermon_id = ? AND output_type = ?",
+        (sermon_id, output_type)
+    )
+    max_index = cursor.fetchone()[0]
+
+    # Get source_id from content_sources
+    cursor.execute(
+        "SELECT cs.id FROM content_sources cs JOIN ai_providers ap ON cs.provider_id = ap.id WHERE cs.content_id = ? AND ap.provider_name = ?",
+        (sermon_id, provider_id)
+    )
+    row = cursor.fetchone()
+    source_id = row[0] if row else None
+
+    word_count = len(content.split()) if content else 0
+
+    cursor.execute("""
+        INSERT INTO generation_outputs (
+            sermon_id, output_type, output_index, content, word_count, source_id
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        sermon_id, output_type, max_index + 1, content, word_count, source_id
+    ))
+    db_conn.commit()
