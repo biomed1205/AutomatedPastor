@@ -229,6 +229,7 @@ def init_db(conn):
         CREATE TABLE IF NOT EXISTS panel_discussions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sermon_id INTEGER,
+            topic TEXT,
             mode TEXT DEFAULT 'discussion',
             status TEXT DEFAULT 'active',
             started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -284,4 +285,306 @@ def init_db(conn):
         )
     """)
 
+    # Create practice_sessions table for practice timing
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS practice_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL,
+            started_at TEXT,
+            ended_at TEXT,
+            paused_at TEXT,
+            total_paused_seconds INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'running',
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create timing_goals table for practice timing
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS timing_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL UNIQUE,
+            target_minutes INTEGER DEFAULT 15,
+            updated_at TEXT,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create section_timings table for practice timing
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS section_timings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            section_name TEXT,
+            section_index INTEGER,
+            start_time_seconds INTEGER,
+            end_time_seconds INTEGER,
+            FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create series table for sermon series management
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS series (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            theme TEXT,
+            start_date DATE,
+            end_date DATE,
+            status TEXT DEFAULT 'planning',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create series_sermons junction table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS series_sermons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            series_id INTEGER NOT NULL,
+            sermon_id INTEGER NOT NULL,
+            order_in_series INTEGER,
+            FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE,
+            UNIQUE(series_id, sermon_id)
+        )
+    """)
+
+    # Create passages table for passage suggestions
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS passages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference TEXT NOT NULL,
+            testament TEXT,
+            genre TEXT,
+            themes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create passage_cache table for caching suggestions
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS passage_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cache_key TEXT UNIQUE NOT NULL,
+            suggestions TEXT,
+            expires_at TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create generation_log table for sermon generation tracking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS generation_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL,
+            stage TEXT,
+            agent TEXT,
+            status TEXT,
+            duration REAL,
+            output TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE
+        )
+    """)
+
+    # =========================================================================
+    # Multi-AI Provider Tables (7 new tables)
+    # =========================================================================
+
+    # Create ai_providers table for managing multiple AI providers
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_providers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider_name TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL,
+            api_key_encrypted TEXT,
+            default_model TEXT,
+            is_enabled BOOLEAN DEFAULT TRUE,
+            is_default BOOLEAN DEFAULT FALSE,
+            color_primary TEXT,
+            color_bg TEXT,
+            config_json TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create content_sources table for tracking which AI generated what content
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS content_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_type TEXT NOT NULL,
+            content_id INTEGER NOT NULL,
+            provider_id INTEGER NOT NULL,
+            model_id TEXT,
+            generation_params TEXT,
+            generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (provider_id) REFERENCES ai_providers(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create research_items table for storing research from AI providers
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS research_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL,
+            item_type TEXT,
+            title TEXT,
+            content TEXT,
+            source_citation TEXT,
+            source_url TEXT,
+            relevance_score REAL,
+            relevance_reasoning TEXT,
+            provider_id INTEGER,
+            tags TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE,
+            FOREIGN KEY (provider_id) REFERENCES ai_providers(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Create content_versions table for version history of content
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS content_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_type TEXT NOT NULL,
+            parent_id INTEGER NOT NULL,
+            version_number INTEGER NOT NULL,
+            content TEXT,
+            author TEXT,
+            change_summary TEXT,
+            source_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (source_id) REFERENCES content_sources(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Create generation_outputs table for storing multiple AI outputs
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS generation_outputs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sermon_id INTEGER NOT NULL,
+            output_type TEXT NOT NULL,
+            output_index INTEGER DEFAULT 0,
+            content TEXT,
+            word_count INTEGER,
+            source_id INTEGER,
+            is_selected BOOLEAN DEFAULT FALSE,
+            user_rating INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (sermon_id) REFERENCES sermons(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_id) REFERENCES content_sources(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Create content_comments table for inline commenting on content
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS content_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_type TEXT NOT NULL,
+            content_id INTEGER NOT NULL,
+            parent_comment_id INTEGER,
+            author TEXT,
+            comment_text TEXT,
+            highlight_start INTEGER,
+            highlight_end INTEGER,
+            status TEXT DEFAULT 'open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (parent_comment_id) REFERENCES content_comments(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Create revision_requests table for tracking revision requests
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS revision_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_type TEXT NOT NULL,
+            content_id INTEGER NOT NULL,
+            comment_id INTEGER,
+            instructions TEXT,
+            target_providers TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (comment_id) REFERENCES content_comments(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Seed default AI providers
+    _seed_default_providers(cursor)
+
     conn.commit()
+
+
+def _seed_default_providers(cursor):
+    """Seed the default AI providers if they don't exist.
+
+    Args:
+        cursor: sqlite3.Cursor to execute queries.
+    """
+    # Check if providers already exist
+    cursor.execute("SELECT COUNT(*) FROM ai_providers")
+    if cursor.fetchone()[0] > 0:
+        return  # Already seeded
+
+    default_providers = [
+        {
+            'provider_name': 'claude_cli',
+            'display_name': 'Claude CLI',
+            'default_model': 'claude-sonnet-4-20250514',
+            'is_enabled': True,
+            'is_default': True,
+            'color_primary': '#D97706',
+            'color_bg': '#FEF3C7',
+            'config_json': '{"type": "cli", "command": "claude"}'
+        },
+        {
+            'provider_name': 'claude_api',
+            'display_name': 'Claude API',
+            'default_model': 'claude-sonnet-4-20250514',
+            'is_enabled': False,
+            'is_default': False,
+            'color_primary': '#D97706',
+            'color_bg': '#FEF3C7',
+            'config_json': '{"type": "api", "base_url": "https://api.anthropic.com"}'
+        },
+        {
+            'provider_name': 'openai',
+            'display_name': 'OpenAI',
+            'default_model': 'gpt-4o',
+            'is_enabled': False,
+            'is_default': False,
+            'color_primary': '#10B981',
+            'color_bg': '#D1FAE5',
+            'config_json': '{"type": "api", "base_url": "https://api.openai.com"}'
+        },
+        {
+            'provider_name': 'gemini',
+            'display_name': 'Google Gemini',
+            'default_model': 'gemini-pro',
+            'is_enabled': False,
+            'is_default': False,
+            'color_primary': '#3B82F6',
+            'color_bg': '#DBEAFE',
+            'config_json': '{"type": "api", "base_url": "https://generativelanguage.googleapis.com"}'
+        }
+    ]
+
+    for provider in default_providers:
+        cursor.execute("""
+            INSERT INTO ai_providers (
+                provider_name, display_name, default_model, is_enabled,
+                is_default, color_primary, color_bg, config_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            provider['provider_name'],
+            provider['display_name'],
+            provider['default_model'],
+            provider['is_enabled'],
+            provider['is_default'],
+            provider['color_primary'],
+            provider['color_bg'],
+            provider['config_json']
+        ))
