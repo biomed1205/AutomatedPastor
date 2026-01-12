@@ -1481,6 +1481,60 @@ h1 { color: #666; }
             return render_template('pages/lectionary.html', upcoming_sundays=[]), 200
         return jsonify({'error': 'Template not found'}), 404
 
+    @app.route('/api/lectionary/<date>')
+    def api_lectionary_readings(date):
+        """API endpoint for getting lectionary readings for a specific date.
+
+        Args:
+            date: Date string in YYYY-MM-DD format.
+
+        Returns:
+            JSON with lectionary readings or error if not found.
+        """
+        from lectionary_calendar import get_lectionary_readings
+        import re
+
+        # Validate date format (YYYY-MM-DD)
+        date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+        if not re.match(date_pattern, date):
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+        # Further validate the date is a valid calendar date
+        try:
+            from datetime import datetime
+            datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'Invalid date. Use YYYY-MM-DD format'}), 400
+
+        conn = get_db()
+        init_db(conn)
+
+        # Ensure lectionary_readings table exists
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS lectionary_readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                year TEXT NOT NULL,
+                season TEXT NOT NULL,
+                name TEXT,
+                first_reading TEXT,
+                psalm TEXT,
+                second_reading TEXT,
+                gospel TEXT,
+                alternate_first TEXT,
+                alternate_psalm TEXT
+            )
+        ''')
+        conn.commit()
+
+        readings = get_lectionary_readings(conn, date)
+
+        if readings is None:
+            return jsonify({'error': 'No readings found for this date'}), 404
+
+        return jsonify(readings), 200
+
     @app.route('/practice')
     def practice_index():
         """Practice timer index page - list sermons available for practice."""
@@ -1572,143 +1626,6 @@ h1 { color: #666; }
         if os.path.exists(os.path.join(template_folder, 'pages', 'settings', 'providers.html')):
             return render_template('pages/settings/providers.html'), 200
         return jsonify({'error': 'Template not found'}), 404
-
-    @app.route('/api/providers')
-    def api_list_providers():
-        """API endpoint for listing all AI providers."""
-        conn = get_db()
-        init_db(conn)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT provider_name, display_name, api_key_encrypted, default_model,
-                   is_enabled, is_default, color_primary, color_bg, config_json
-            FROM ai_providers ORDER BY is_default DESC, display_name ASC
-        """)
-        providers = []
-        for row in cursor.fetchall():
-            providers.append({
-                'provider_name': row['provider_name'],
-                'display_name': row['display_name'],
-                'has_api_key': bool(row['api_key_encrypted']),
-                'default_model': row['default_model'],
-                'is_enabled': bool(row['is_enabled']),
-                'is_default': bool(row['is_default']),
-                'color_primary': row['color_primary'],
-                'color_bg': row['color_bg'],
-                'cli_available': row['provider_name'] == 'claude_cli'  # CLI is always available
-            })
-        return jsonify({'providers': providers}), 200
-
-    @app.route('/api/providers/<provider_name>', methods=['PUT'])
-    def api_update_provider(provider_name):
-        """API endpoint for updating a provider's settings."""
-        from providers.encryption import encrypt_api_key
-        conn = get_db()
-        init_db(conn)
-        cursor = conn.cursor()
-
-        data = request.get_json() or {}
-
-        # Build update query dynamically
-        updates = []
-        params = []
-
-        if 'is_enabled' in data:
-            updates.append('is_enabled = ?')
-            params.append(1 if data['is_enabled'] else 0)
-
-        if 'is_default' in data and data['is_default']:
-            # First, clear all other defaults
-            cursor.execute("UPDATE ai_providers SET is_default = 0")
-            updates.append('is_default = ?')
-            params.append(1)
-
-        if 'default_model' in data:
-            updates.append('default_model = ?')
-            params.append(data['default_model'])
-
-        if 'api_key' in data and data['api_key']:
-            # Encrypt the API key before storing
-            try:
-                encrypted = encrypt_api_key(data['api_key'])
-                updates.append('api_key_encrypted = ?')
-                params.append(encrypted)
-            except Exception:
-                # If encryption fails, store as-is (for testing)
-                updates.append('api_key_encrypted = ?')
-                params.append(data['api_key'])
-
-        if updates:
-            updates.append('updated_at = CURRENT_TIMESTAMP')
-            params.append(provider_name)
-            query = f"UPDATE ai_providers SET {', '.join(updates)} WHERE provider_name = ?"
-            cursor.execute(query, params)
-            conn.commit()
-
-        return jsonify({'success': True}), 200
-
-    @app.route('/api/providers/<provider_name>/models')
-    def api_provider_models(provider_name):
-        """API endpoint for getting available models for a provider."""
-        # Return predefined models for each provider
-        models = {
-            'claude_cli': [
-                {'id': 'claude-sonnet-4-20250514', 'name': 'Claude Sonnet 4'},
-                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet'},
-                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus'},
-            ],
-            'claude_api': [
-                {'id': 'claude-sonnet-4-20250514', 'name': 'Claude Sonnet 4'},
-                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet'},
-                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus'},
-            ],
-            'openai': [
-                {'id': 'gpt-4o', 'name': 'GPT-4o'},
-                {'id': 'gpt-4-turbo', 'name': 'GPT-4 Turbo'},
-                {'id': 'gpt-3.5-turbo', 'name': 'GPT-3.5 Turbo'},
-            ],
-            'gemini': [
-                {'id': 'gemini-pro', 'name': 'Gemini Pro'},
-                {'id': 'gemini-ultra', 'name': 'Gemini Ultra'},
-            ]
-        }
-        return jsonify({'models': models.get(provider_name, [])}), 200
-
-    @app.route('/api/providers/<provider_name>/test', methods=['POST'])
-    def api_test_provider(provider_name):
-        """API endpoint for testing a provider connection."""
-        conn = get_db()
-        init_db(conn)
-
-        # For claude_cli, check if CLI is available
-        if provider_name == 'claude_cli':
-            import shutil
-            cli_available = shutil.which('claude') is not None
-            return jsonify({
-                'available': cli_available,
-                'error': None if cli_available else 'Claude CLI not found in PATH'
-            }), 200
-
-        # For API providers, check if API key is configured
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT api_key_encrypted FROM ai_providers WHERE provider_name = ?",
-            (provider_name,)
-        )
-        row = cursor.fetchone()
-
-        if not row or not row['api_key_encrypted']:
-            return jsonify({
-                'available': False,
-                'error': 'API key not configured'
-            }), 200
-
-        # For now, just return success if API key exists
-        # In production, would make a test API call
-        return jsonify({
-            'available': True,
-            'error': None
-        }), 200
 
     @app.route('/api/settings/church', methods=['POST'])
     def api_save_church_settings():
@@ -2074,32 +1991,7 @@ h1 { color: #666; }
 
         return jsonify({'error': 'Series not found'}), 404
 
-    # ========================================
-    # PROVIDER MANAGEMENT API
-    # ========================================
-
-    @app.route('/api/providers')
-    def api_list_providers():
-        """API endpoint for listing all AI providers."""
-        from providers.encryption import KeyEncryption
-
-        conn = get_db()
-        init_db(conn)
-
-        cursor = conn.cursor()
-
-        # Check if filtering by enabled status
-        enabled_only = request.args.get('enabled', '').lower() == 'true'
-
-        if enabled_only:
-            cursor.execute("""
-                SELECT provider_name, display_name, api_key_encrypted,
-                       default_model, is_enabled, is_default,
-                       color_primary, color_bg, config_json
-                FROM ai_providers
-                WHERE is_enabled = 1
-                ORDER BY is_default DESC, display_name ASC
-            """)
+    # Initialize SocketIO for real-time features
         else:
             cursor.execute("""
                 SELECT provider_name, display_name, api_key_encrypted,

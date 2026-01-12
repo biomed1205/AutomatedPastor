@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Provider Settings - AutomatedPastor{% endblock %}
+
+{% block content %}
+<div x-data="providerSettings()" x-init="loadProviders()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="font-heading text-2xl lg:text-3xl font-bold text-earth-800">AI Providers</h1>
+            <p class="mt-1 text-earth-500">Configure AI providers for sermon generation</p>
+        </div>
+    </div>
+
+    <!-- Provider Cards -->
+    <div class="grid gap-4">
+        <template x-for="provider in providers" :key="provider.provider_name">
+            <div class="bg-white rounded-2xl shadow-sm border border-earth-100 p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <!-- Provider Info -->
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+                             :style="`background-color: ${provider.color_bg}`">
+                            <span class="text-lg font-bold" :style="`color: ${provider.color_primary}`"
+                                  x-text="provider.display_name.charAt(0)"></span>
+                        </div>
+                        <div>
+                            <h3 class="font-heading text-lg font-semibold text-earth-800"
+                                x-text="provider.display_name"></h3>
+                            <p class="text-sm text-earth-500" x-text="provider.provider_name"></p>
+                        </div>
+                    </div>
+
+                    <!-- Enable Toggle -->
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   :checked="provider.is_enabled"
+                                   @change="toggleEnabled(provider)"
+                                   class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-earth-200 rounded-full peer peer-checked:bg-primary-600 transition-colors">
+                                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                            </div>
+                            <span class="text-sm text-earth-600">Enabled</span>
+                        </label>
+
+                        <button @click="setAsDefault(provider)"
+                                :class="provider.is_default ? 'bg-amber-100 text-amber-700' : 'bg-earth-100 text-earth-600 hover:bg-earth-200'"
+                                class="px-3 py-1 rounded-full text-sm font-medium transition-colors">
+                            <span x-show="provider.is_default">Default</span>
+                            <span x-show="!provider.is_default">Set Default</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Key Input (for non-CLI providers) -->
+                <div x-show="provider.provider_name !== 'claude_cli'" class="mt-4 space-y-4">
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-earth-700 mb-1">API Key</label>
+                            <div class="relative">
+                                <input :type="showApiKey[provider.provider_name] ? 'text' : 'password'"
+                                       x-model="apiKeys[provider.provider_name]"
+                                       :placeholder="provider.has_api_key ? '********' : 'Enter API key'"
+                                       class="w-full px-4 py-2 border border-earth-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                <button @click="showApiKey[provider.provider_name] = !showApiKey[provider.provider_name]"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-earth-400 hover:text-earth-600">
+                                    <svg x-show="!showApiKey[provider.provider_name]" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <svg x-show="showApiKey[provider.provider_name]" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-earth-700 mb-1">Default Model</label>
+                            <select x-model="selectedModels[provider.provider_name]"
+                                    class="w-full px-4 py-2 border border-earth-200 rounded-xl focus:ring-2 focus:ring-primary-500">
+                                <template x-for="model in provider.models || []" :key="model.id">
+                                    <option :value="model.id" x-text="model.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button @click="saveProvider(provider)"
+                                :disabled="saving[provider.provider_name]"
+                                class="px-4 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                            <span x-show="!saving[provider.provider_name]">Save</span>
+                            <span x-show="saving[provider.provider_name]">Saving...</span>
+                        </button>
+
+                        <button @click="testConnection(provider)"
+                                :disabled="testing[provider.provider_name]"
+                                class="px-4 py-2 bg-earth-100 text-earth-700 rounded-xl font-medium hover:bg-earth-200 disabled:opacity-50 transition-colors">
+                            <span x-show="!testing[provider.provider_name]">Test Connection</span>
+                            <span x-show="testing[provider.provider_name]">Testing...</span>
+                        </button>
+                    </div>
+
+                    <!-- Test Result -->
+                    <div x-show="testResults[provider.provider_name]"
+                         :class="testResults[provider.provider_name]?.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'"
+                         class="p-3 rounded-xl text-sm">
+                        <span x-text="testResults[provider.provider_name]?.message"></span>
+                    </div>
+                </div>
+
+                <!-- CLI Status (for claude_cli) -->
+                <div x-show="provider.provider_name === 'claude_cli'" class="mt-4">
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="w-2 h-2 rounded-full" :class="provider.cli_available ? 'bg-green-500' : 'bg-red-500'"></span>
+                        <span x-text="provider.cli_available ? 'Claude CLI is available' : 'Claude CLI not found'"></span>
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-sm font-medium text-earth-700 mb-1">Default Model</label>
+                        <select x-model="selectedModels[provider.provider_name]"
+                                @change="saveProvider(provider)"
+                                class="w-full px-4 py-2 border border-earth-200 rounded-xl focus:ring-2 focus:ring-primary-500">
+                            <template x-for="model in provider.models || []" :key="model.id">
+                                <option :value="model.id" x-text="model.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Info Card -->
+    <div class="bg-blue-50 rounded-2xl border border-blue-200 p-6">
+        <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+                <h3 class="font-heading text-lg font-semibold text-blue-800">About AI Providers</h3>
+                <p class="text-sm text-blue-700 mt-1">
+                    AutomatedPastor supports multiple AI providers. The Claude CLI is the default and requires no API key
+                    if you have Claude Code installed. API-based providers require an API key from their respective platforms.
+                </p>
+                <ul class="mt-2 text-sm text-blue-700 list-disc list-inside">
+                    <li><strong>Claude CLI</strong> - Uses the Claude Code CLI (default, no API key needed)</li>
+                    <li><strong>Claude API</strong> - Direct Anthropic API access</li>
+                    <li><strong>OpenAI</strong> - GPT models from OpenAI</li>
+                    <li><strong>Gemini</strong> - Google's Gemini models</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function providerSettings() {
+    return {
+        providers: [],
+        apiKeys: {},
+        selectedModels: {},
+        showApiKey: {},
+        saving: {},
+        testing: {},
+        testResults: {},
+
+        async loadProviders() {
+            try {
+                const response = await fetch('/api/providers');
+                const data = await response.json();
+                this.providers = data.providers;
+
+                // Load models for each provider
+                for (const provider of this.providers) {
+                    this.showApiKey[provider.provider_name] = false;
+                    this.apiKeys[provider.provider_name] = '';
+                    this.selectedModels[provider.provider_name] = provider.default_model || '';
+
+                    await this.loadModels(provider);
+                }
+            } catch (error) {
+                console.error('Failed to load providers:', error);
+            }
+        },
+
+        async loadModels(provider) {
+            try {
+                const response = await fetch(`/api/providers/${provider.provider_name}/models`);
+                const data = await response.json();
+                provider.models = data.models || [];
+            } catch (error) {
+                provider.models = [];
+            }
+        },
+
+        async toggleEnabled(provider) {
+            provider.is_enabled = !provider.is_enabled;
+            await this.saveProvider(provider);
+        },
+
+        async setAsDefault(provider) {
+            this.providers.forEach(p => p.is_default = false);
+            provider.is_default = true;
+            await this.saveProvider(provider);
+        },
+
+        async saveProvider(provider) {
+            this.saving[provider.provider_name] = true;
+            try {
+                const payload = {
+                    is_enabled: provider.is_enabled,
+                    is_default: provider.is_default,
+                    default_model: this.selectedModels[provider.provider_name]
+                };
+
+                if (this.apiKeys[provider.provider_name]) {
+                    payload.api_key = this.apiKeys[provider.provider_name];
+                }
+
+                await fetch(`/api/providers/${provider.provider_name}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                // Clear API key input after save
+                this.apiKeys[provider.provider_name] = '';
+                provider.has_api_key = true;
+
+                window.showToast && window.showToast('Settings saved!', 'success');
+            } catch (error) {
+                console.error('Failed to save provider:', error);
+                window.showToast && window.showToast('Failed to save settings', 'error');
+            }
+            this.saving[provider.provider_name] = false;
+        },
+
+        async testConnection(provider) {
+            this.testing[provider.provider_name] = true;
+            this.testResults[provider.provider_name] = null;
+
+            try {
+                const response = await fetch(`/api/providers/${provider.provider_name}/test`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                this.testResults[provider.provider_name] = {
+                    success: data.available,
+                    message: data.available ? 'Connection successful!' : (data.error || 'Connection failed')
+                };
+            } catch (error) {
+                this.testResults[provider.provider_name] = {
+                    success: false,
+                    message: 'Test failed: ' + error.message
+                };
+            }
+
+            this.testing[provider.provider_name] = false;
+        }
+    };
+}
+</script>
+{% endblock %}
