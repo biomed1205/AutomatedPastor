@@ -2,10 +2,14 @@
 import os
 
 from flask import Flask, jsonify, request, redirect, url_for, session, render_template_string, render_template, g
+from flask_socketio import SocketIO
 from database import get_db, init_db, close_db as db_close
 
 
 DEFAULT_PORT = 8787
+
+# Module-level SocketIO instance (initialized in create_app)
+socketio = None
 
 # Base HTML template
 BASE_TEMPLATE = '''<!DOCTYPE html>
@@ -1579,12 +1583,11 @@ h1 { color: #666; }
 
     @app.route('/api/sermon/generate', methods=['POST'])
     def api_generate_sermon():
-        """API endpoint for generating a sermon."""
+        """API endpoint for generating a sermon with streaming progress."""
+        import json as json_module
+        import time
         from sermon_generator import generate_sermon_simple
         from cli_bridge import CLIBridge
-
-        conn = get_db()
-        init_db(conn)
 
         data = request.get_json() or {}
         scripture = data.get('scripture', '').strip()
@@ -1597,31 +1600,62 @@ h1 { color: #666; }
         if not scripture:
             return jsonify({'error': 'Scripture is required'}), 400
 
-        try:
-            bridge = CLIBridge(command='echo')
-            params = {
-                'scripture': scripture,
-                'title': title or f'Sermon on {scripture}',
-                'theme': theme,
-                'main_point': main_point,
-                'liturgical_season': liturgical_season,
-                'special_occasion': special_occasion
-            }
+        # Get database connection and prepare params before streaming
+        # This ensures we're in the application context
+        conn = get_db()
+        init_db(conn)
+        bridge = CLIBridge(command='echo')
+        params = {
+            'scripture': scripture,
+            'title': title or f'Sermon on {scripture}',
+            'theme': theme,
+            'main_point': main_point,
+            'liturgical_season': liturgical_season,
+            'special_occasion': special_occasion
+        }
 
-            result = generate_sermon_simple(params, bridge, conn)
+        def generate_stream():
+            """Generator for streaming progress updates."""
+            try:
+                # Stage 1: Research (0-25%)
+                yield f"data: {json_module.dumps({'stage': 'research', 'progress': 5})}\n\n"
+                time.sleep(0.3)
+                yield f"data: {json_module.dumps({'stage': 'research', 'progress': 15})}\n\n"
+                time.sleep(0.3)
+                yield f"data: {json_module.dumps({'stage': 'research', 'progress': 25})}\n\n"
 
-            return jsonify({
-                'sermon_id': result.get('sermon_id'),
-                'id': result.get('id'),
-                'title': result.get('title'),
-                'manuscript': result.get('manuscript', '')[:500] + '...' if result.get('manuscript') else '',
-                'word_count': result.get('word_count', 0),
-                'estimated_minutes': result.get('estimated_minutes', 0),
-                'status': 'completed'
-            }), 201
+                # Stage 2: Structure (25-50%)
+                yield f"data: {json_module.dumps({'stage': 'structure', 'progress': 30})}\n\n"
+                time.sleep(0.3)
+                yield f"data: {json_module.dumps({'stage': 'structure', 'progress': 40})}\n\n"
+                time.sleep(0.3)
+                yield f"data: {json_module.dumps({'stage': 'structure', 'progress': 50})}\n\n"
 
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+                # Stage 3: Writing (50-80%) - actual generation happens here
+                yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 55})}\n\n"
+                yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 65})}\n\n"
+
+                # Perform actual generation (uses conn/bridge/params from closure)
+                result = generate_sermon_simple(params, bridge, conn)
+                yield f"data: {json_module.dumps({'stage': 'writing', 'progress': 80})}\n\n"
+
+                # Stage 4: Review (80-100%)
+                yield f"data: {json_module.dumps({'stage': 'review', 'progress': 85})}\n\n"
+                time.sleep(0.2)
+                yield f"data: {json_module.dumps({'stage': 'review', 'progress': 95})}\n\n"
+                time.sleep(0.2)
+
+                # Complete
+                yield f"data: {json_module.dumps({'stage': 'review', 'progress': 100, 'sermon_id': result.get('sermon_id')})}\n\n"
+
+            except Exception as e:
+                yield f"data: {json_module.dumps({'error': str(e)})}\n\n"
+
+        return app.response_class(
+            generate_stream(),
+            mimetype='text/event-stream',
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        )
 
     # ========================================
     # PRACTICE TIMER API
@@ -1887,10 +1921,43 @@ h1 { color: #666; }
 
         return jsonify({'error': 'Series not found'}), 404
 
+    # Initialize SocketIO for real-time features
+    global socketio
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+    # Register SocketIO event handlers
+    @socketio.on('connect')
+    def on_connect():
+        """Handle client connection."""
+        pass
+
+    @socketio.on('join_generation')
+    def on_join_generation(data):
+        """Handle client joining a generation room."""
+        from flask_socketio import join_room
+        sermon_id = data.get('sermon_id')
+        if sermon_id:
+            join_room(f'generation_{sermon_id}')
+
+    @socketio.on('join_stream')
+    def on_join_stream(data):
+        """Handle client joining a chat stream room."""
+        from flask_socketio import join_room
+        discussion_id = data.get('discussion_id')
+        if discussion_id:
+            join_room(f'stream_{discussion_id}')
+
     return app
+
+
+def get_socketio():
+    """Get the SocketIO instance."""
+    global socketio
+    return socketio
 
 
 if __name__ == '__main__':
     application = create_app()
     host = os.environ.get('FLASK_HOST', '127.0.0.1')
-    application.run(host=host, port=DEFAULT_PORT)
+    # Use socketio.run() instead of app.run() for WebSocket support
+    socketio.run(application, host=host, port=DEFAULT_PORT, debug=False, allow_unsafe_werkzeug=True)
